@@ -1,0 +1,41 @@
+Content List 1.1
+
+This program is designed to generate a csv containing general information
+about files and directories, which can then be used as a "ghost" file system
+for searching files or for validation.
+
+Currently, the following data per file is stored:
+path - The path of the file, relative to input parent directory (unix style: /a/b/c/file.tar.gz).
+type - The type of the file (FILE, DIRECTORY, SYMBOLIC_LINK, UNKNOWN)
+created - Timestamp of when the file was created
+modified - Timestamp of when the file was modified
+size - Size of the file (or sum of children sizes if a directory, or 0 for others)
+files - Total amount of files inside a directory (0 for non directories)
+directories - Total amount of directories inside a directory (0 for non directories)
+sha256 - A SHA256 hash of the file (empty for non regular files)
+sample - The first 32 bytes of the file or equal to file size if file size < 32 (empty for non regular files)
+
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or
+distribute this software, either in source code form or as a compiled
+binary, for any purpose, commercial or non-commercial, and by any
+means.
+
+In jurisdictions that recognize copyright laws, the author or authors
+of this software dedicate any and all copyright interest in the
+software to the public domain. We make this dedication for the benefit
+of the public at large and to the detriment of our heirs and
+successors. We intend this dedication to be an overt act of
+relinquishment in perpetuity of all present and future rights to this
+software under copyright law.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+For more information, please refer to <https://unlicense.org/>
