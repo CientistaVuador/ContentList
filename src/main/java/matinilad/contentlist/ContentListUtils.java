@@ -1,5 +1,6 @@
 package matinilad.contentlist;
 
+import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -8,25 +9,10 @@ import java.util.Objects;
  *
  * @author Cien
  */
+@Deprecated
 public class ContentListUtils {
-
-    public static ContentType typeOf(Path file) {
-        Objects.requireNonNull(file, "file is null");
-        
-        ContentType type;
-        if (Files.isRegularFile(file)) {
-            type = ContentType.FILE;
-        } else if (Files.isDirectory(file)) {
-            type = ContentType.DIRECTORY;
-        } else if (Files.isSymbolicLink(file)) {
-            type = ContentType.SYMBOLIC_LINK;
-        } else {
-            type = ContentType.UNKNOWN;
-        }
-        
-        return type;
-    }
-
+    
+    @Deprecated
     public static byte[] readHexString(String hexString) {
         if (hexString == null || hexString.isEmpty()) {
             return null;
@@ -43,6 +29,7 @@ public class ContentListUtils {
         return bytes;
     }
 
+    @Deprecated
     public static String toHexString(byte[] data) {
         if (data == null) {
             return "";
@@ -57,26 +44,6 @@ public class ContentListUtils {
             b.append(hex);
         }
         return b.toString();
-    }
-
-    public static String escapeCSVField(String s) {
-        StringBuilder b = new StringBuilder();
-        boolean quotes = false;
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '"' || c == '\n' || c == '\r' || c == ',') {
-                quotes = true;
-            }
-            if (c == '"') {
-                b.append('"');
-            }
-            b.append(c);
-        }
-        String result = b.toString();
-        if (quotes) {
-            return '"' + result + '"';
-        }
-        return result;
     }
 
     private ContentListUtils() {

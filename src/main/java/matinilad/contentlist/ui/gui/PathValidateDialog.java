@@ -32,9 +32,10 @@ import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.SwingUtilities;
-import matinilad.contentlist.ContentEntry;
+import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.ContentListUtils;
-import matinilad.contentlist.ContentType;
+import matinilad.contentlist.phantomfs.entry.FileEntryType;
+import matinilad.contentlist.phantomfs.entry.FileEntryValidatorReason;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
@@ -42,21 +43,21 @@ import matinilad.contentlist.ui.UIUtils;
  * @author Cien
  */
 @SuppressWarnings("serial")
-public class PathValidateDialog extends javax.swing.JDialog implements ContentEntry.ValidationCallbacks {
+public class PathValidateDialog extends javax.swing.JDialog implements FileEntry.ValidationCallbacks {
 
     private static final AtomicLong instances = new AtomicLong(0);
 
     private final long instance = instances.getAndIncrement();
 
     private final Thread thread;
-    private final ContentEntry[] entries;
+    private final FileEntry[] entries;
     private final Path baseDirectory;
 
     /**
      * Creates new form Validate
      */
     public PathValidateDialog(
-            ContentEntry[] entries, Path baseDirectory,
+            FileEntry[] entries, Path baseDirectory,
             java.awt.Frame parent, boolean modal
     ) {
         super(parent, modal);
@@ -281,7 +282,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements ContentEn
         SwingUtilities.invokeLater(() -> {
             log(MainWindow.INFO_LEVEL, "Running");
         });
-        for (ContentEntry e : this.entries) {
+        for (FileEntry e : this.entries) {
             e.validate(this.baseDirectory, this);
             entryFinish();
         }
@@ -374,7 +375,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements ContentEn
         log(MainWindow.ERROR_LEVEL, UIUtils.stacktraceOf(t));
     }
 
-    private ContentEntry entry = null;
+    private FileEntry entry = null;
     private Path path = null;
     private boolean currentEntryRefused = false;
     private long initialTime = System.currentTimeMillis();
@@ -383,7 +384,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements ContentEn
     private int refused = 0;
 
     @Override
-    public void setEntry(ContentEntry entry) throws IOException, InterruptedException {
+    public void setEntry(FileEntry entry) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             this.entry = entry;
             this.path = null;
@@ -397,7 +398,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements ContentEn
             b.append("Created on: ").append(UIUtils.asShortLocalizedDateTime(entry.getCreated())).append("\n");
             b.append("Modified on: ").append(UIUtils.asShortLocalizedDateTime(entry.getModified())).append("\n");
             b.append("Size: ").append(UIUtils.formatBytes(entry.getSize())).append("\n");
-            if (entry.getType().equals(ContentType.DIRECTORY)) {
+            if (entry.getType().equals(FileEntryType.DIRECTORY)) {
                 b.append(entry.getFiles()).append(" Files, ").append(entry.getDirectories()).append(" Directories").append("\n");
             }
             byte[] sha256 = entry.getSha256();
@@ -458,10 +459,10 @@ public class PathValidateDialog extends javax.swing.JDialog implements ContentEn
     }
 
     @Override
-    public void accepted(ContentEntry.ValidationReason reason) throws IOException, InterruptedException {
+    public void accepted(FileEntryValidatorReason reason) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             switch (reason) {
-                case EXISTS -> {
+                case EXISTENCE -> {
                     this.existsCheckBox.setSelected(true);
                 }
                 case TYPE -> {
@@ -481,13 +482,13 @@ public class PathValidateDialog extends javax.swing.JDialog implements ContentEn
     }
 
     @Override
-    public void refused(ContentEntry.ValidationReason reason, Object foundValue) throws IOException, InterruptedException {
+    public void refused(FileEntryValidatorReason reason, Object foundValue) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             log(MainWindow.WARN_LEVEL, "WARNING!");
             log(MainWindow.WARN_LEVEL, "Refused: " + this.entry.getPath().toString());
             log(MainWindow.WARN_LEVEL, "Real Path: " + this.path.toString());
             switch (reason) {
-                case EXISTS -> {
+                case EXISTENCE -> {
                     log(MainWindow.WARN_LEVEL, "Reason: Does not exists!");
                 }
                 case TYPE -> {

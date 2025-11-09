@@ -30,9 +30,9 @@ import java.awt.Toolkit;
 import java.io.File;
 import java.io.IOException;
 import javax.swing.SwingUtilities;
-import matinilad.contentlist.ContentEntry;
-import matinilad.contentlist.ContentFileSystem;
-import matinilad.contentlist.ContentListAccess;
+import matinilad.contentlist.phantomfs.entry.FileEntry;
+import matinilad.contentlist.phantomfs.PhantomFileSystem;
+import matinilad.contentlist.phantomfs.entry.FileEntryReader;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
@@ -40,7 +40,7 @@ import matinilad.contentlist.ui.UIUtils;
  * @author Cien
  */
 @SuppressWarnings("serial")
-public class OpenFileSystemDialog extends javax.swing.JDialog implements ContentListAccess.ContentListAccessCallbacks {
+public class OpenFileSystemDialog extends javax.swing.JDialog implements FileEntryReader.ContentListAccessCallbacks {
 
     private final File file;
     private final Thread thread;
@@ -54,7 +54,7 @@ public class OpenFileSystemDialog extends javax.swing.JDialog implements Content
         this.file = file;
         this.thread = new Thread(() -> {
             try {
-                ContentFileSystem fs = ContentFileSystem.of(this.file, OpenFileSystemDialog.this);
+                PhantomFileSystem fs = PhantomFileSystem.of(this.file, OpenFileSystemDialog.this);
                 if (getParent() instanceof MainWindow w) {
                     SwingUtilities.invokeLater(() -> {
                         w.openFileSystem(fs);
@@ -192,7 +192,7 @@ public class OpenFileSystemDialog extends javax.swing.JDialog implements Content
     }
 
     @Override
-    public void onContentEntryRead(ContentEntry entry, int index) throws IOException, InterruptedException {
+    public void onContentEntryRead(FileEntry entry, int index) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             this.currentEntry.setText(entry.getPath().toString());
         });

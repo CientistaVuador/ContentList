@@ -1,4 +1,4 @@
-package matinilad.contentlist;
+package matinilad.contentlist.phantomfs;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -21,10 +21,10 @@ import java.util.Objects;
  *
  * @author Cien
  */
-public class ContentPath {
+public class PhantomPath {
 
-    private static final ContentPath ABSOLUTE_ROOT = new ContentPath(new String[0], false);
-    private static final ContentPath RELATIVE_ROOT = new ContentPath(new String[0], true);
+    private static final PhantomPath ABSOLUTE_ROOT = new PhantomPath(new String[0], false);
+    private static final PhantomPath RELATIVE_ROOT = new PhantomPath(new String[0], true);
 
     /**
      * Creates a new ContentPath from a array of objects
@@ -33,7 +33,7 @@ public class ContentPath {
      * @param relative true if the path is relative
      * @return A ContentPath
      */
-    public static ContentPath of(String[] objects, boolean relative) {
+    public static PhantomPath of(String[] objects, boolean relative) {
         Objects.requireNonNull(objects, "objects is null");
         for (int i = 0; i < objects.length; i++) {
             String object = objects[i];
@@ -49,7 +49,7 @@ public class ContentPath {
             }
         }
 
-        return new ContentPath(objects.clone(), relative);
+        return new PhantomPath(objects.clone(), relative);
     }
     
     /**
@@ -59,7 +59,7 @@ public class ContentPath {
      * @return The content object
      * @throws IllegalArgumentException if any parsing error occurred
      */
-    public static ContentPath of(String path) {
+    public static PhantomPath of(String path) {
         if (path == null || path.isEmpty()) {
             return RELATIVE_ROOT;
         }
@@ -96,7 +96,7 @@ public class ContentPath {
             b.appendCodePoint(unicode);
         }
         String[] objects = objectList.toArray(String[]::new);
-        return new ContentPath(objects, relative);
+        return new PhantomPath(objects, relative);
     }
 
     /**
@@ -109,7 +109,7 @@ public class ContentPath {
      * @param b The b path
      * @return a + b
      */
-    public static ContentPath resolve(ContentPath a, ContentPath b) {
+    public static PhantomPath resolve(PhantomPath a, PhantomPath b) {
         Objects.requireNonNull(a, "a is null");
         Objects.requireNonNull(b, "b is null");
         List<String> fields = new ArrayList<>();
@@ -119,14 +119,14 @@ public class ContentPath {
         for (int i = 0; i < b.getNumberOfObjects(); i++) {
             fields.add(b.getObject(i));
         }
-        return new ContentPath(fields.toArray(String[]::new), a.isRelative());
+        return new PhantomPath(fields.toArray(String[]::new), a.isRelative());
     }
     
     private final String[] objects;
     private final boolean relative;
     private final boolean specialLinks;
 
-    private ContentPath(String[] objects, boolean relative) {
+    private PhantomPath(String[] objects, boolean relative) {
         this.objects = objects;
         this.relative = relative;
         boolean special = false;
@@ -219,7 +219,7 @@ public class ContentPath {
      *
      * @return the parent or the root if this is already a root directory
      */
-    public ContentPath getParent() {
+    public PhantomPath getParent() {
         if (this.objects.length <= 1) {
             if (isRelative()) {
                 return RELATIVE_ROOT;
@@ -227,7 +227,7 @@ public class ContentPath {
                 return ABSOLUTE_ROOT;
             }
         }
-        return new ContentPath(Arrays.copyOf(this.objects, this.objects.length - 1), isRelative());
+        return new PhantomPath(Arrays.copyOf(this.objects, this.objects.length - 1), isRelative());
     }
 
     /**
@@ -240,11 +240,11 @@ public class ContentPath {
      *
      * @return A relative path or the current instance if already relative
      */
-    public ContentPath toRelative() {
+    public PhantomPath toRelative() {
         if (isRelative()) {
             return this;
         }
-        return new ContentPath(this.objects, true);
+        return new PhantomPath(this.objects, true);
     }
 
     /**
@@ -257,11 +257,11 @@ public class ContentPath {
      *
      * @return A absolute path or the current instance if already absolute
      */
-    public ContentPath toAbsolute() {
+    public PhantomPath toAbsolute() {
         if (!isRelative()) {
             return this;
         }
-        return new ContentPath(this.objects, false);
+        return new PhantomPath(this.objects, false);
     }
 
     /**
@@ -270,7 +270,7 @@ public class ContentPath {
      * @param other
      * @return
      */
-    public ContentPath resolve(String other) {
+    public PhantomPath resolve(String other) {
         return resolve(this, of(other));
     }
 
@@ -280,7 +280,7 @@ public class ContentPath {
      * @param other
      * @return
      */
-    public ContentPath resolve(ContentPath other) {
+    public PhantomPath resolve(PhantomPath other) {
         return resolve(this, other);
     }
 
@@ -332,7 +332,7 @@ public class ContentPath {
      * @param name
      * @return
      */
-    public ContentPath rename(String name) {
+    public PhantomPath rename(String name) {
         if (isRoot()) {
             return of(new String[]{name}, isRelative());
         }
@@ -355,7 +355,7 @@ public class ContentPath {
      * @param root The root path, not null, either absolute or relative.
      * @return A relative path or null if the root path does not match the start of this path
      */
-    public ContentPath relative(ContentPath root) {
+    public PhantomPath relative(PhantomPath root) {
         Objects.requireNonNull(root, "root is null");
         if (getNumberOfObjects() < root.getNumberOfObjects()) {
             return null;
@@ -365,7 +365,7 @@ public class ContentPath {
                 return null;
             }
         }
-        return new ContentPath(
+        return new PhantomPath(
                 Arrays.copyOfRange(this.objects, root.getNumberOfObjects(), this.objects.length),
                 true
         );
@@ -390,7 +390,7 @@ public class ContentPath {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final ContentPath other = (ContentPath) obj;
+        final PhantomPath other = (PhantomPath) obj;
         if (this.relative != other.relative) {
             return false;
         }

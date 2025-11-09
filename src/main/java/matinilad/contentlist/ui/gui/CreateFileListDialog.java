@@ -32,11 +32,11 @@ import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.SwingUtilities;
-import matinilad.contentlist.ContentEntry;
-import matinilad.contentlist.ContentList;
+import matinilad.contentlist.phantomfs.entry.FileEntry;
+import matinilad.contentlist.phantomfs.PhantomCreator;
 import matinilad.contentlist.ContentListUtils;
-import matinilad.contentlist.ContentPath;
-import matinilad.contentlist.ContentType;
+import matinilad.contentlist.phantomfs.PhantomPath;
+import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
@@ -44,7 +44,7 @@ import matinilad.contentlist.ui.UIUtils;
  * @author Cien
  */
 @SuppressWarnings("serial")
-public class CreateFileListDialog extends javax.swing.JDialog implements ContentList.ContentListCallbacks {
+public class CreateFileListDialog extends javax.swing.JDialog implements PhantomCreator.ContentListCallbacks {
 
     private static final AtomicLong instances = new AtomicLong(0);
 
@@ -91,7 +91,7 @@ public class CreateFileListDialog extends javax.swing.JDialog implements Content
     }
 
     private void run() throws Throwable {
-        ContentList.create(this.output, this, this.inputPaths);
+        PhantomCreator.create(this.output, this, this.inputPaths);
     }
 
     private void onException(Throwable t) {
@@ -287,7 +287,7 @@ public class CreateFileListDialog extends javax.swing.JDialog implements Content
     }
 
     @Override
-    public void onEntryStart(ContentPath path) throws IOException, InterruptedException {
+    public void onEntryStart(PhantomPath path) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             this.initialTime = System.currentTimeMillis();
             CreateFileListDialog.this.currentEntry.setText(path.toString());
@@ -295,7 +295,7 @@ public class CreateFileListDialog extends javax.swing.JDialog implements Content
     }
 
     @Override
-    public void onEntryFinish(ContentEntry entry) throws IOException, InterruptedException {
+    public void onEntryFinish(FileEntry entry) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             StringBuilder b = new StringBuilder();
             b.append(entry.getPath().toString()).append("\n");
@@ -303,7 +303,7 @@ public class CreateFileListDialog extends javax.swing.JDialog implements Content
             b.append("Created on: ").append(UIUtils.asShortLocalizedDateTime(entry.getCreated())).append("\n");
             b.append("Modified on: ").append(UIUtils.asShortLocalizedDateTime(entry.getModified())).append("\n");
             b.append("Size: ").append(UIUtils.formatBytes(entry.getSize())).append("\n");
-            if (entry.getType().equals(ContentType.DIRECTORY)) {
+            if (entry.getType().equals(FileEntryType.DIRECTORY)) {
                 b.append(entry.getFiles()).append(" Files, ").append(entry.getDirectories()).append(" Directories").append("\n");
             }
             byte[] sha256 = entry.getSha256();
@@ -316,7 +316,7 @@ public class CreateFileListDialog extends javax.swing.JDialog implements Content
             }
             CreateFileListDialog.this.lastEntry.setText(b.toString());
 
-            if (entry.getType().equals(ContentType.DIRECTORY)) {
+            if (entry.getType().equals(FileEntryType.DIRECTORY)) {
                 this.directories++;
             } else {
                 this.files++;

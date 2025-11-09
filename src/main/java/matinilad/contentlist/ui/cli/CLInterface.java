@@ -8,16 +8,16 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
-import matinilad.contentlist.ContentEntry;
-import matinilad.contentlist.ContentList;
+import matinilad.contentlist.phantomfs.entry.FileEntry;
+import matinilad.contentlist.phantomfs.PhantomCreator;
 import matinilad.contentlist.ContentListUtils;
-import matinilad.contentlist.ContentListValidator;
-import static matinilad.contentlist.ContentListValidator.ValidatorReason.EXISTS;
-import static matinilad.contentlist.ContentListValidator.ValidatorReason.HASH;
-import static matinilad.contentlist.ContentListValidator.ValidatorReason.SAMPLE;
-import static matinilad.contentlist.ContentListValidator.ValidatorReason.SIZE;
-import static matinilad.contentlist.ContentListValidator.ValidatorReason.TYPE;
-import matinilad.contentlist.ContentPath;
+import matinilad.contentlist.phantomfs.PhantomValidator;
+import static matinilad.contentlist.phantomfs.PhantomValidator.ValidatorReason.EXISTS;
+import static matinilad.contentlist.phantomfs.PhantomValidator.ValidatorReason.HASH;
+import static matinilad.contentlist.phantomfs.PhantomValidator.ValidatorReason.SAMPLE;
+import static matinilad.contentlist.phantomfs.PhantomValidator.ValidatorReason.SIZE;
+import static matinilad.contentlist.phantomfs.PhantomValidator.ValidatorReason.TYPE;
+import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
@@ -108,7 +108,7 @@ public class CLInterface {
 
         try {
             try (OutputStream o = Files.newOutputStream(outputFile)) {
-                ContentList.ContentListCallbacks callbacks = new ContentList.ContentListCallbacks() {
+                PhantomCreator.ContentListCallbacks callbacks = new PhantomCreator.ContentListCallbacks() {
                     @Override
                     public void onStart() throws IOException {
                         out.println("Initializing...");
@@ -126,8 +126,8 @@ public class CLInterface {
 
                     private long nextUpdate = System.currentTimeMillis();
 
-                    private ContentPath currentPath = null;
-                    private ContentEntry lastEntry = null;
+                    private PhantomPath currentPath = null;
+                    private FileEntry lastEntry = null;
                     private long current = 0;
                     private long total = 0;
                     private int processedEntries = 0;
@@ -149,7 +149,7 @@ public class CLInterface {
                     }
 
                     @Override
-                    public void onEntryStart(ContentPath path) throws IOException {
+                    public void onEntryStart(PhantomPath path) throws IOException {
                         this.currentPath = path;
                         this.current = 0;
                         this.total = 0;
@@ -158,7 +158,7 @@ public class CLInterface {
                     }
 
                     @Override
-                    public void onEntryFinish(ContentEntry entry) throws IOException {
+                    public void onEntryFinish(FileEntry entry) throws IOException {
                         this.lastEntry = entry;
                         this.processedEntries++;
 
@@ -181,7 +181,7 @@ public class CLInterface {
                     }
                 };
 
-                ContentList.create(o, callbacks, inputFiles);
+                PhantomCreator.create(o, callbacks, inputFiles);
             }
         } catch (IOException | InterruptedException ex) {
             out.println("Operation failed!");
@@ -240,7 +240,7 @@ public class CLInterface {
         }
 
         try {
-            ContentListValidator.validate(inputFile, baseDirectory, new ContentListValidator.ContentListValidatorCallbacks() {
+            PhantomValidator.validate(inputFile, baseDirectory, new PhantomValidator.ContentListValidatorCallbacks() {
                 @Override
                 public void onStart() throws IOException {
                     out.println("Initializing...");
@@ -248,7 +248,7 @@ public class CLInterface {
 
                 private long nextUpdate = System.currentTimeMillis();
 
-                private ContentEntry currentEntry = null;
+                private FileEntry currentEntry = null;
                 boolean refused = false;
                 private long current = 0;
                 private long total = 0;
@@ -274,7 +274,7 @@ public class CLInterface {
                 }
 
                 @Override
-                public void onEntryStart(ContentEntry entry, Path fileToValidate) throws IOException, InterruptedException {
+                public void onEntryStart(FileEntry entry, Path fileToValidate) throws IOException, InterruptedException {
                     this.currentEntry = entry;
                     this.refused = false;
 
@@ -282,12 +282,12 @@ public class CLInterface {
                 }
 
                 @Override
-                public void onEntryAccepted(ContentListValidator.ValidatorReason reason, Object expected, Object found) throws IOException, InterruptedException {
+                public void onEntryAccepted(PhantomValidator.ValidatorReason reason, Object expected, Object found) throws IOException, InterruptedException {
                     update();
                 }
 
                 @Override
-                public void onEntryRefused(ContentListValidator.ValidatorReason reason, Object expected, Object found) throws IOException, InterruptedException {
+                public void onEntryRefused(PhantomValidator.ValidatorReason reason, Object expected, Object found) throws IOException, InterruptedException {
                     this.refused = true;
 
                     if (this.refusedEntries > 1000 && !this.ignoreWarnings) {

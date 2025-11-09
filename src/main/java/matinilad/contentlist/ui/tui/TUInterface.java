@@ -13,11 +13,11 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import matinilad.contentlist.ContentEntry;
-import matinilad.contentlist.ContentFileSystem;
+import matinilad.contentlist.phantomfs.entry.FileEntry;
+import matinilad.contentlist.phantomfs.PhantomFileSystem;
 import matinilad.contentlist.ContentListUtils;
-import matinilad.contentlist.ContentPath;
-import matinilad.contentlist.ContentType;
+import matinilad.contentlist.phantomfs.PhantomPath;
+import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
@@ -82,9 +82,9 @@ public class TUInterface {
 
         out.println("Loading...");
 
-        ContentFileSystem fs;
+        PhantomFileSystem fs;
         try {
-            fs = ContentFileSystem.of(inputPath.toFile());
+            fs = PhantomFileSystem.of(inputPath.toFile());
         } catch (IOException | InterruptedException ex) {
             out.println("Failed to load input file!");
             out.println(ex.getLocalizedMessage());
@@ -97,8 +97,8 @@ public class TUInterface {
         runTerminal(in, out, fs);
     }
 
-    private static ContentEntry readEntry(PrintStream out, ContentFileSystem fs, ContentPath path) {
-        ContentEntry entry = fs.readEntry(path);
+    private static FileEntry readEntry(PrintStream out, PhantomFileSystem fs, PhantomPath path) {
+        FileEntry entry = fs.getEntry(path);
         if (entry == null) {
             out.println("Entry not found in CSV file.");
             out.println(path);
@@ -106,10 +106,10 @@ public class TUInterface {
         return entry;
     }
 
-    private static ContentPath parseContentPath(PrintStream out, String argument) {
-        ContentPath path;
+    private static PhantomPath parseContentPath(PrintStream out, String argument) {
+        PhantomPath path;
         try {
-            path = ContentPath.of(argument);
+            path = PhantomPath.of(argument);
         } catch (IllegalArgumentException ex) {
             out.println(argument + " is not a valid path!");
             out.println(ex.getLocalizedMessage());
@@ -135,11 +135,11 @@ public class TUInterface {
         out.println("  ecsearch - Exact name, Case sensitive");
     }
 
-    private static void runTerminal(InputStream in, PrintStream out, ContentFileSystem fs) {
+    private static void runTerminal(InputStream in, PrintStream out, PhantomFileSystem fs) {
         Scanner scanner = new Scanner(in);
 
         out.println("Content List File System Terminal v1.0");
-        ContentEntry rootEntry = readEntry(out, fs, ContentPath.of("/"));
+        FileEntry rootEntry = readEntry(out, fs, PhantomPath.of("/"));
         if (rootEntry != null) {
             out.println(UIUtils.formatBytes(rootEntry.getSize()));
             out.println(rootEntry.getFiles() + " Files, " + rootEntry.getDirectories() + " Directories");
@@ -147,7 +147,7 @@ public class TUInterface {
         }
         out.println("Welcome!");
 
-        ContentPath workDirectory = ContentPath.of("/");
+        PhantomPath workDirectory = PhantomPath.of("/");
 
         while (true) {
             out.print("]");
@@ -175,8 +175,8 @@ public class TUInterface {
                     if (argument != null) {
                         out.println("Tip: ls has no arguments, use cd for navigation.");
                     }
-                    ContentPath[] files = fs.listFiles(workDirectory, true);
-                    for (ContentPath file : files) {
+                    PhantomPath[] files = fs.listFiles(workDirectory, true);
+                    for (PhantomPath file : files) {
                         out.print(file.relative(workDirectory).toString());
                         if (!file.getName().equals(".")
                                 && !file.getName().equals("..")
@@ -191,7 +191,7 @@ public class TUInterface {
                         out.println("Usage: cd [directory]");
                         continue;
                     }
-                    ContentPath newWorkDirectory = parseContentPath(out, argument);
+                    PhantomPath newWorkDirectory = parseContentPath(out, argument);
                     if (newWorkDirectory == null) {
                         continue;
                     }
@@ -214,7 +214,7 @@ public class TUInterface {
                         out.println("Usage: about [file]");
                         continue;
                     }
-                    ContentPath p = parseContentPath(out, argument);
+                    PhantomPath p = parseContentPath(out, argument);
                     if (p == null) {
                         continue;
                     }
@@ -225,7 +225,7 @@ public class TUInterface {
                         out.println(argument + " does not exists!");
                         continue;
                     }
-                    ContentEntry entry = readEntry(out, fs, p);
+                    FileEntry entry = readEntry(out, fs, p);
                     if (entry == null) {
                         continue;
                     }
@@ -235,7 +235,7 @@ public class TUInterface {
                     out.println(" Created: " + UIUtils.asShortLocalizedDateTime(entry.getCreated()));
                     out.println(" Modified: " + UIUtils.asShortLocalizedDateTime(entry.getModified()));
                     out.println(" Size: " + UIUtils.formatBytes(entry.getSize()));
-                    if (entry.getType().equals(ContentType.DIRECTORY)) {
+                    if (entry.getType().equals(FileEntryType.DIRECTORY)) {
                         out.println("  " + entry.getFiles() + " Files, " + entry.getDirectories() + " Directories");
                     }
                     byte[] sha256 = entry.getSha256();
@@ -254,7 +254,7 @@ public class TUInterface {
                     }
                     boolean caseSensitive = command.equals("csearch") || command.equals("ecsearch");
                     boolean exact = command.equals("esearch") || command.equals("ecsearch");
-                    ContentPath[] p;
+                    PhantomPath[] p;
                     try {
                         p = fs.search(workDirectory, argument, caseSensitive, exact, true);
                     } catch (InterruptedException ex) {
@@ -264,7 +264,7 @@ public class TUInterface {
                         out.println("No files found for '" + argument + "'!");
                         continue;
                     }
-                    for (ContentPath e : p) {
+                    for (PhantomPath e : p) {
                         out.print(e.relative(workDirectory));
                         if (fs.isDirectory(e)) {
                             out.println("/.");

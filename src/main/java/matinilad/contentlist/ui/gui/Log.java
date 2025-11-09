@@ -67,7 +67,7 @@ public class Log extends javax.swing.JDialog implements ActionListener {
     public void println(String line) {
         this.out.println(line);
         if (this.lines.size() >= 100) {
-            this.lines.removeFirst();
+            this.lines.remove(0);
         }
         this.lines.add(line);
         this.requiresUpdate = true;

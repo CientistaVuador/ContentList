@@ -73,9 +73,9 @@ import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
-import matinilad.contentlist.ContentEntry;
-import matinilad.contentlist.ContentFileSystem;
-import matinilad.contentlist.ContentPath;
+import matinilad.contentlist.phantomfs.entry.FileEntry;
+import matinilad.contentlist.phantomfs.PhantomFileSystem;
+import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
@@ -89,7 +89,7 @@ public class MainWindow extends javax.swing.JFrame {
 
         private static final String[] header = new String[]{"Type", "Name", "Size", "Created", "Modified"};
         
-        private static String getName(ContentFileSystem fs, ContentPath p) {
+        private static String getName(PhantomFileSystem fs, PhantomPath p) {
             String name = p.getName();
             if (".".equals(name) || "..".equals(name)) {
                 String realPathName = fs.toRealPath(p).getName();
@@ -106,7 +106,7 @@ public class MainWindow extends javax.swing.JFrame {
             return (name == null ? "(root)" : name);
         }
         
-        private static Object[][] createTableData(ContentFileSystem fs, ContentPath[] paths) {
+        private static Object[][] createTableData(PhantomFileSystem fs, PhantomPath[] paths) {
             Objects.requireNonNull(fs, "File system is null");
             Objects.requireNonNull(paths, "Paths is null");
             Object[][] tableData = new Object[paths.length][header.length];
@@ -114,8 +114,8 @@ public class MainWindow extends javax.swing.JFrame {
                 Object[] rowData = new Object[header.length];
                 Arrays.fill(rowData, "");
 
-                ContentPath p = paths[row];
-                ContentEntry entry = fs.readEntry(p);
+                PhantomPath p = paths[row];
+                FileEntry entry = fs.getEntry(p);
 
                 String name = getName(fs, p);
                 rowData[1] = name;
@@ -133,7 +133,7 @@ public class MainWindow extends javax.swing.JFrame {
 
         private static final String[] searchHeader = new String[]{"Type", "Name", "Path", "Size"};
 
-        private static Object[][] createSearchModeTableData(ContentFileSystem fs, ContentPath[] paths) {
+        private static Object[][] createSearchModeTableData(PhantomFileSystem fs, PhantomPath[] paths) {
             Objects.requireNonNull(fs, "File system is null");
             Objects.requireNonNull(paths, "Paths is null");
             Object[][] tableData = new Object[paths.length][searchHeader.length];
@@ -141,8 +141,8 @@ public class MainWindow extends javax.swing.JFrame {
                 Object[] rowData = new Object[searchHeader.length];
                 Arrays.fill(rowData, "");
 
-                ContentPath p = paths[row];
-                ContentEntry entry = fs.readEntry(p);
+                PhantomPath p = paths[row];
+                FileEntry entry = fs.getEntry(p);
 
                 String name = getName(fs, p);
                 rowData[1] = name;
@@ -157,17 +157,17 @@ public class MainWindow extends javax.swing.JFrame {
             return tableData;
         }
 
-        private final ContentFileSystem fileSystem;
+        private final PhantomFileSystem fileSystem;
         private final boolean searchMode;
-        private ContentPath[] paths = new ContentPath[0];
+        private PhantomPath[] paths = new PhantomPath[0];
 
-        public ContentPathTableModel(ContentFileSystem fs, boolean searchMode) {
+        public ContentPathTableModel(PhantomFileSystem fs, boolean searchMode) {
             super(searchMode ? searchHeader : header, 0);
             this.fileSystem = fs;
             this.searchMode = searchMode;
         }
 
-        public ContentFileSystem getFileSystem() {
+        public PhantomFileSystem getFileSystem() {
             return fileSystem;
         }
 
@@ -175,11 +175,11 @@ public class MainWindow extends javax.swing.JFrame {
             return searchMode;
         }
 
-        public ContentPath getContentPath(int index) {
+        public PhantomPath getContentPath(int index) {
             return this.paths[index];
         }
 
-        public void updatePaths(ContentPath[] newData) {
+        public void updatePaths(PhantomPath[] newData) {
             setRowCount(0);
             Object[][] tableData;
             if (isSearchMode()) {
@@ -271,8 +271,8 @@ public class MainWindow extends javax.swing.JFrame {
     private File baseDirectorySuggestion = null;
     private File baseDirectory = null;
 
-    private ContentPath currentPath = null;
-    private ContentFileSystem fileSystem = null;
+    private PhantomPath currentPath = null;
+    private PhantomFileSystem fileSystem = null;
 
     private ContentPathTableModel fileSystemTableModel = null;
     private ContentPathTableModel searchTableModel = null;
@@ -350,13 +350,35 @@ public class MainWindow extends javax.swing.JFrame {
         filePropertiesButton = new javax.swing.JMenuItem();
         jScrollPane1 = new javax.swing.JScrollPane();
         fileTableList = new javax.swing.JTable();
+        jToolBar1 = new javax.swing.JToolBar();
+        jButton4 = new javax.swing.JButton();
+        jSeparator3 = new javax.swing.JToolBar.Separator();
+        jButton1 = new javax.swing.JButton();
+        jButton2 = new javax.swing.JButton();
+        jButton3 = new javax.swing.JButton();
+        jSeparator1 = new javax.swing.JToolBar.Separator();
+        jLabel2 = new javax.swing.JLabel();
+        jSeparator5 = new javax.swing.JToolBar.Separator();
         pathField = new javax.swing.JTextField();
+        jSeparator2 = new javax.swing.JToolBar.Separator();
+        jLabel1 = new javax.swing.JLabel();
+        jSeparator6 = new javax.swing.JToolBar.Separator();
         searchField = new javax.swing.JTextField();
+        jToolBar2 = new javax.swing.JToolBar();
         logLabel = new javax.swing.JLabel();
+        jSeparator7 = new javax.swing.JToolBar.Separator();
+        jLabel5 = new javax.swing.JLabel();
+        jSeparator9 = new javax.swing.JToolBar.Separator();
+        jLabel6 = new javax.swing.JLabel();
+        jSeparator10 = new javax.swing.JToolBar.Separator();
+        jLabel7 = new javax.swing.JLabel();
+        jSeparator8 = new javax.swing.JToolBar.Separator();
+        jLabel4 = new javax.swing.JLabel();
         jMenuBar1 = new javax.swing.JMenuBar();
         jMenu1 = new javax.swing.JMenu();
-        openButton = new javax.swing.JMenuItem();
         createButton = new javax.swing.JMenuItem();
+        jSeparator4 = new javax.swing.JPopupMenu.Separator();
+        openButton = new javax.swing.JMenuItem();
         jMenu2 = new javax.swing.JMenu();
         baseDirectoryButton = new javax.swing.JMenuItem();
         clearStatus = new javax.swing.JMenuItem();
@@ -451,7 +473,7 @@ public class MainWindow extends javax.swing.JFrame {
         filePopupMenu.add(filePropertiesButton);
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setTitle("Content List 1.1");
+        setTitle("Content List 2.0");
         setIconImage(FrameIcon.getIcon());
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowOpened(java.awt.event.WindowEvent evt) {
@@ -484,7 +506,44 @@ public class MainWindow extends javax.swing.JFrame {
         });
         jScrollPane1.setViewportView(fileTableList);
 
+        jToolBar1.setRollover(true);
+
+        jButton4.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/info.png"))); // NOI18N
+        jButton4.setToolTipText("Info");
+        jButton4.setFocusable(false);
+        jButton4.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        jButton4.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        jToolBar1.add(jButton4);
+        jToolBar1.add(jSeparator3);
+
+        jButton1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/home.png"))); // NOI18N
+        jButton1.setToolTipText("Home");
+        jButton1.setFocusable(false);
+        jButton1.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        jButton1.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        jToolBar1.add(jButton1);
+
+        jButton2.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/return.png"))); // NOI18N
+        jButton2.setToolTipText("Return");
+        jButton2.setFocusable(false);
+        jButton2.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        jButton2.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        jToolBar1.add(jButton2);
+
+        jButton3.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/next.png"))); // NOI18N
+        jButton3.setToolTipText("Next");
+        jButton3.setFocusable(false);
+        jButton3.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        jButton3.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        jToolBar1.add(jButton3);
+        jToolBar1.add(jSeparator1);
+
+        jLabel2.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/folder.png"))); // NOI18N
+        jToolBar1.add(jLabel2);
+        jToolBar1.add(jSeparator5);
+
         pathField.setEnabled(false);
+        pathField.setMaximumSize(new java.awt.Dimension(3000, 2147483647));
         pathField.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusLost(java.awt.event.FocusEvent evt) {
                 pathFieldFocusLost(evt);
@@ -495,17 +554,60 @@ public class MainWindow extends javax.swing.JFrame {
                 pathFieldKeyPressed(evt);
             }
         });
+        jToolBar1.add(pathField);
+        jToolBar1.add(jSeparator2);
+
+        jLabel1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/search.png"))); // NOI18N
+        jToolBar1.add(jLabel1);
+        jToolBar1.add(jSeparator6);
 
         searchField.setEnabled(false);
+        searchField.setMaximumSize(new java.awt.Dimension(1024, 2147483647));
         searchField.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyTyped(java.awt.event.KeyEvent evt) {
                 searchFieldKeyTyped(evt);
             }
         });
+        jToolBar1.add(searchField);
+
+        jToolBar2.setRollover(true);
 
         logLabel.setText("Hello!");
+        logLabel.setMaximumSize(new java.awt.Dimension(200, 16));
+        jToolBar2.add(logLabel);
+        jToolBar2.add(jSeparator7);
+
+        jLabel5.setText("My List");
+        jLabel5.setMaximumSize(new java.awt.Dimension(150, 16));
+        jToolBar2.add(jLabel5);
+        jToolBar2.add(jSeparator9);
+
+        jLabel6.setText("100 Files");
+        jLabel6.setMaximumSize(new java.awt.Dimension(100, 16));
+        jToolBar2.add(jLabel6);
+        jToolBar2.add(jSeparator10);
+
+        jLabel7.setText("10 Directories");
+        jLabel7.setMaximumSize(new java.awt.Dimension(100, 16));
+        jToolBar2.add(jLabel7);
+        jToolBar2.add(jSeparator8);
+
+        jLabel4.setText("5.0 GB");
+        jLabel4.setMaximumSize(new java.awt.Dimension(100, 16));
+        jToolBar2.add(jLabel4);
 
         jMenu1.setText("File");
+
+        createButton.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_T, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        createButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/create.png"))); // NOI18N
+        createButton.setText("New");
+        createButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                createButtonActionPerformed(evt);
+            }
+        });
+        jMenu1.add(createButton);
+        jMenu1.add(jSeparator4);
 
         openButton.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         openButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/open.png"))); // NOI18N
@@ -516,16 +618,6 @@ public class MainWindow extends javax.swing.JFrame {
             }
         });
         jMenu1.add(openButton);
-
-        createButton.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_T, java.awt.event.InputEvent.CTRL_DOWN_MASK));
-        createButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/create.png"))); // NOI18N
-        createButton.setText("Create");
-        createButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                createButtonActionPerformed(evt);
-            }
-        });
-        jMenu1.add(createButton);
 
         jMenuBar1.add(jMenu1);
 
@@ -615,25 +707,20 @@ public class MainWindow extends javax.swing.JFrame {
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(pathField)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(searchField, javax.swing.GroupLayout.PREFERRED_SIZE, 136, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 592, Short.MAX_VALUE)
-                    .addComponent(logLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 688, Short.MAX_VALUE)
+                    .addComponent(jToolBar1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jToolBar2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(pathField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(searchField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addComponent(jToolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 443, Short.MAX_VALUE)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 393, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(logLabel)
+                .addComponent(jToolBar2, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
 
@@ -641,7 +728,7 @@ public class MainWindow extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void updateFileTable() {
-        ContentPath[] files = this.fileSystem.listFiles(this.currentPath, true);
+        PhantomPath[] files = this.fileSystem.listFiles(this.currentPath, true);
         if (!(this.fileTableList.getModel() instanceof ContentPathTableModel)) {
             this.fileSystemTableModel = new ContentPathTableModel(this.fileSystem, false);
             this.fileTableList.setModel(this.fileSystemTableModel);
@@ -650,9 +737,9 @@ public class MainWindow extends javax.swing.JFrame {
         this.fileTableList.setEnabled(true);
     }
 
-    public void openFileSystem(ContentFileSystem fs) {
+    public void openFileSystem(PhantomFileSystem fs) {
         this.fileSystem = fs;
-        this.currentPath = ContentPath.of("/");
+        this.currentPath = PhantomPath.of("/");
         this.searchField.setEnabled(true);
         this.pathField.setEnabled(true);
         this.searchField.setText("");
@@ -880,27 +967,27 @@ public class MainWindow extends javax.swing.JFrame {
         return dir;
     }
 
-    private ContentPath[] getSelectedPaths() {
+    private PhantomPath[] getSelectedPaths() {
         if (!(this.fileTableList.getModel() instanceof ContentPathTableModel)) {
-            return new ContentPath[0];
+            return new PhantomPath[0];
         }
         ContentPathTableModel table = (ContentPathTableModel) this.fileTableList.getModel();
         int[] selectedRows = this.fileTableList.getSelectedRows();
-        ContentPath[] selected = new ContentPath[selectedRows.length];
+        PhantomPath[] selected = new PhantomPath[selectedRows.length];
         for (int i = 0; i < selected.length; i++) {
             selected[i] = table.getContentPath(selectedRows[i]);
         }
         if (selected.length == 1) {
             return selected;
         }
-        List<ContentPath> filtered = new ArrayList<>();
-        for (ContentPath e:selected) {
+        List<PhantomPath> filtered = new ArrayList<>();
+        for (PhantomPath e:selected) {
             if (e.hasSpecialLinks()) {
                 continue;
             }
             filtered.add(e);
         }
-        return filtered.toArray(ContentPath[]::new);
+        return filtered.toArray(PhantomPath[]::new);
     }
 
     private File[] getSelectedFiles() {
@@ -908,7 +995,7 @@ public class MainWindow extends javax.swing.JFrame {
         if (base == null) {
             return null;
         }
-        ContentPath[] selectedPaths = getSelectedPaths();
+        PhantomPath[] selectedPaths = getSelectedPaths();
         File[] selectedFiles = new File[selectedPaths.length];
         for (int i = 0; i < selectedPaths.length; i++) {
             selectedFiles[i] = this.fileSystem.toRealPath(selectedPaths[i]).resolveToPath(base.toPath()).toFile();
@@ -962,7 +1049,7 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_openFileButtonActionPerformed
 
     private void doubleClickOnRow(JTable table, int modelRow) {
-        ContentPath p = ((ContentPathTableModel) table.getModel()).getContentPath(modelRow);
+        PhantomPath p = ((ContentPathTableModel) table.getModel()).getContentPath(modelRow);
         if (this.fileSystem.isDirectory(p)) {
             updateCurrentPath(p);
         } else {
@@ -995,10 +1082,10 @@ public class MainWindow extends javax.swing.JFrame {
 
         {
             this.existsSystemMenu.removeAll();
-            ContentPath[] selected = getSelectedPaths();
+            PhantomPath[] selected = getSelectedPaths();
             boolean checkFailed = false;
             int existsConfirmed = 0;
-            for (ContentPath s : selected) {
+            for (PhantomPath s : selected) {
                 boolean exists = false;
                 if (this.baseDirectory != null) {
                     Path p = s.resolveToPath(this.baseDirectory.toPath());
@@ -1157,22 +1244,22 @@ public class MainWindow extends javax.swing.JFrame {
         if (base == null) {
             return;
         }
-        ContentPath[] selectedPaths = getSelectedPaths();
+        PhantomPath[] selectedPaths = getSelectedPaths();
         if (selectedPaths.length == 0) {
             Toolkit.getDefaultToolkit().beep();
             return;
         }
-        ContentEntry[] entries = this.fileSystem.listEntries(selectedPaths);
+        FileEntry[] entries = this.fileSystem.listEntries(selectedPaths);
         PathValidateDialog dialog = new PathValidateDialog(entries, base.toPath(), this, false);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }//GEN-LAST:event_validateFileButtonActionPerformed
 
     private void filePropertiesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_filePropertiesButtonActionPerformed
-        ContentPath[] selectedPaths = getSelectedPaths();
-        List<ContentEntry> selectedEntries = new ArrayList<>();
-        for (ContentPath p : selectedPaths) {
-            ContentEntry e = this.fileSystem.readEntry(p);
+        PhantomPath[] selectedPaths = getSelectedPaths();
+        List<FileEntry> selectedEntries = new ArrayList<>();
+        for (PhantomPath p : selectedPaths) {
+            FileEntry e = this.fileSystem.getEntry(p);
             if (e != null) {
                 selectedEntries.add(e);
             }
@@ -1181,12 +1268,12 @@ public class MainWindow extends javax.swing.JFrame {
             Toolkit.getDefaultToolkit().beep();
             return;
         }
-        EntryProperties properties = new EntryProperties(selectedEntries.toArray(ContentEntry[]::new), this, false);
+        EntryProperties properties = new EntryProperties(selectedEntries.toArray(FileEntry[]::new), this, false);
         properties.setLocationRelativeTo(this);
         properties.setVisible(true);
     }//GEN-LAST:event_filePropertiesButtonActionPerformed
 
-    private void updateCurrentPath(ContentPath newPath) {
+    private void updateCurrentPath(PhantomPath newPath) {
         if (this.searchModeEnabled) {
             this.searchModeEnabled = false;
             onSearchDisabled();
@@ -1197,13 +1284,13 @@ public class MainWindow extends javax.swing.JFrame {
     }
 
     private void openLocationButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openLocationButtonActionPerformed
-        ContentPath[] selectedPaths = getSelectedPaths();
+        PhantomPath[] selectedPaths = getSelectedPaths();
         if (selectedPaths.length == 0) {
             Toolkit.getDefaultToolkit().beep();
             return;
         }
-        ContentPath selected = this.fileSystem.toRealPath(selectedPaths[0]);
-        ContentPath directory = selected.getParent();
+        PhantomPath selected = this.fileSystem.toRealPath(selectedPaths[0]);
+        PhantomPath directory = selected.getParent();
         updateCurrentPath(directory);
 
         if (this.fileTableList.getModel() instanceof ContentPathTableModel model) {
@@ -1285,9 +1372,9 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void pathFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_pathFieldKeyPressed
         if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
-            ContentPath newPath;
+            PhantomPath newPath;
             try {
-                newPath = ContentPath.of(this.pathField.getText());
+                newPath = PhantomPath.of(this.pathField.getText());
             } catch (IllegalArgumentException ex) {
                 println(INFO_LEVEL, "Invalid path: " + this.pathField.getText());
                 println(INFO_LEVEL, UIUtils.stacktraceOf(ex));
@@ -1360,15 +1447,15 @@ public class MainWindow extends javax.swing.JFrame {
             this.searchTableModel = new ContentPathTableModel(this.fileSystem, true);
         }
         this.fileTableList.setModel(this.searchTableModel);
-        this.searchTableModel.updatePaths(new ContentPath[]{});
+        this.searchTableModel.updatePaths(new PhantomPath[]{});
 
         if (this.searchThreadTask != null) {
             this.searchThreadTask.cancel(true);
             this.searchThreadTask = null;
         }
         
-        final ContentFileSystem fs = this.fileSystem;
-        final ContentPath searchDirectory = this.currentPath;
+        final PhantomFileSystem fs = this.fileSystem;
+        final PhantomPath searchDirectory = this.currentPath;
         final String toSearch = this.searchField.getText();
         final boolean caseSensitive = this.caseSensitiveSearch.isSelected();
         final boolean exact = this.exactSearch.isSelected();
@@ -1377,7 +1464,7 @@ public class MainWindow extends javax.swing.JFrame {
 
         this.searchThreadTask = this.searchThread.submit(() -> {
             try {
-                final ContentPath[] result = fs.search(searchDirectory, toSearch, caseSensitive, exact, true);
+                final PhantomPath[] result = fs.search(searchDirectory, toSearch, caseSensitive, exact, true);
                 SwingUtilities.invokeLater(() -> {
                     onSearchDone(id, searchDirectory, result);
                 });
@@ -1392,7 +1479,7 @@ public class MainWindow extends javax.swing.JFrame {
         });
     }
 
-    private void onSearchDone(long id, ContentPath directory, ContentPath[] results) {
+    private void onSearchDone(long id, PhantomPath directory, PhantomPath[] results) {
         if (id != (this.searchId - 1) || !this.searchModeEnabled) {
             return;
         }
@@ -1446,6 +1533,16 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JPopupMenu filePopupMenu;
     private javax.swing.JMenuItem filePropertiesButton;
     private javax.swing.JTable fileTableList;
+    private javax.swing.JButton jButton1;
+    private javax.swing.JButton jButton2;
+    private javax.swing.JButton jButton3;
+    private javax.swing.JButton jButton4;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
     private javax.swing.JMenu jMenu1;
     private javax.swing.JMenu jMenu2;
     private javax.swing.JMenu jMenu3;
@@ -1453,6 +1550,18 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JMenu jMenu5;
     private javax.swing.JMenuBar jMenuBar1;
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JToolBar.Separator jSeparator1;
+    private javax.swing.JToolBar.Separator jSeparator10;
+    private javax.swing.JToolBar.Separator jSeparator2;
+    private javax.swing.JToolBar.Separator jSeparator3;
+    private javax.swing.JPopupMenu.Separator jSeparator4;
+    private javax.swing.JToolBar.Separator jSeparator5;
+    private javax.swing.JToolBar.Separator jSeparator6;
+    private javax.swing.JToolBar.Separator jSeparator7;
+    private javax.swing.JToolBar.Separator jSeparator8;
+    private javax.swing.JToolBar.Separator jSeparator9;
+    private javax.swing.JToolBar jToolBar1;
+    private javax.swing.JToolBar jToolBar2;
     private javax.swing.JMenuItem logButton;
     private javax.swing.JLabel logLabel;
     private javax.swing.JMenuItem moveToTrashButton;

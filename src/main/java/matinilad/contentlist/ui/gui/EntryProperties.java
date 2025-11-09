@@ -26,9 +26,9 @@
  */
 package matinilad.contentlist.ui.gui;
 
-import matinilad.contentlist.ContentEntry;
+import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.ContentListUtils;
-import matinilad.contentlist.ContentType;
+import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
@@ -41,7 +41,7 @@ public class EntryProperties extends javax.swing.JDialog {
     /**
      * Creates new form EntryProperties
      */
-    public EntryProperties(ContentEntry[] entries, java.awt.Frame parent, boolean modal) {
+    public EntryProperties(FileEntry[] entries, java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
         initEntries(entries);
@@ -64,7 +64,7 @@ public class EntryProperties extends javax.swing.JDialog {
         return b.toString();
     }
     
-    private void initEntries(ContentEntry[] entries) {
+    private void initEntries(FileEntry[] entries) {
         this.createdField.setText("(unavailable)");
         this.nameField.setText("(unavailable)");
         this.filesDirectoriesField.setText("(unavailable)");
@@ -94,7 +94,7 @@ public class EntryProperties extends javax.swing.JDialog {
             long totalSize = 0;
             int files = 0;
             int directories = 0;
-            for (ContentEntry e:entries) {
+            for (FileEntry e:entries) {
                 totalSize += e.getSize();
                 switch (e.getType()) {
                     case DIRECTORY -> {
@@ -114,7 +114,7 @@ public class EntryProperties extends javax.swing.JDialog {
             return;
         }
         
-        ContentEntry entry = entries[0];
+        FileEntry entry = entries[0];
         String name = entry.getPath().getName();
         if (name == null) {
             name = "(root)";
@@ -135,7 +135,7 @@ public class EntryProperties extends javax.swing.JDialog {
         this.modifiedField.setText(UIUtils.asShortLocalizedDateTime(entry.getModified()));
         this.sizeField.setText(UIUtils.formatBytes(entry.getSize()));
         
-        if (ContentType.DIRECTORY.equals(entry.getType())) {
+        if (FileEntryType.DIRECTORY.equals(entry.getType())) {
             this.filesDirectoriesField.setEnabled(true);
             this.filesDirectoriesField.setText(getFilesDirectoriesString(entry.getFiles(), entry.getDirectories()));
         }

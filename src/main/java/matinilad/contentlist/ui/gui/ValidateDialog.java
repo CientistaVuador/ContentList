@@ -42,15 +42,15 @@ import javax.swing.JFileChooser;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import matinilad.contentlist.ContentEntry;
+import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.ContentListUtils;
-import matinilad.contentlist.ContentListValidator;
-import static matinilad.contentlist.ContentListValidator.ValidatorReason.EXISTS;
-import static matinilad.contentlist.ContentListValidator.ValidatorReason.HASH;
-import static matinilad.contentlist.ContentListValidator.ValidatorReason.SAMPLE;
-import static matinilad.contentlist.ContentListValidator.ValidatorReason.SIZE;
-import static matinilad.contentlist.ContentListValidator.ValidatorReason.TYPE;
-import matinilad.contentlist.ContentType;
+import matinilad.contentlist.phantomfs.PhantomValidator;
+import static matinilad.contentlist.phantomfs.PhantomValidator.ValidatorReason.EXISTS;
+import static matinilad.contentlist.phantomfs.PhantomValidator.ValidatorReason.HASH;
+import static matinilad.contentlist.phantomfs.PhantomValidator.ValidatorReason.SAMPLE;
+import static matinilad.contentlist.phantomfs.PhantomValidator.ValidatorReason.SIZE;
+import static matinilad.contentlist.phantomfs.PhantomValidator.ValidatorReason.TYPE;
+import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
@@ -58,7 +58,7 @@ import matinilad.contentlist.ui.UIUtils;
  * @author Cien
  */
 @SuppressWarnings("serial")
-public class ValidateDialog extends javax.swing.JDialog implements ContentListValidator.ContentListValidatorCallbacks {
+public class ValidateDialog extends javax.swing.JDialog implements PhantomValidator.ContentListValidatorCallbacks {
 
     private final Thread thread;
     private final Path inputFile;
@@ -352,7 +352,7 @@ public class ValidateDialog extends javax.swing.JDialog implements ContentListVa
     }// </editor-fold>//GEN-END:initComponents
 
     private void run() throws Throwable {
-        ContentListValidator.validate(this.inputFile, this.baseDirectory, this);
+        PhantomValidator.validate(this.inputFile, this.baseDirectory, this);
     }
 
     private void existsCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_existsCheckBoxActionPerformed
@@ -474,7 +474,7 @@ public class ValidateDialog extends javax.swing.JDialog implements ContentListVa
         });
     }
 
-    private ContentEntry entry = null;
+    private FileEntry entry = null;
     private Path path = null;
     private boolean currentEntryRefused = false;
     private long initialTime = System.currentTimeMillis();
@@ -482,7 +482,7 @@ public class ValidateDialog extends javax.swing.JDialog implements ContentListVa
     private int refused = 0;
 
     @Override
-    public void onEntryStart(ContentEntry entry, Path path) throws IOException, InterruptedException {
+    public void onEntryStart(FileEntry entry, Path path) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             this.entry = entry;
             this.path = path;
@@ -493,7 +493,7 @@ public class ValidateDialog extends javax.swing.JDialog implements ContentListVa
             b.append("Created on: ").append(UIUtils.asShortLocalizedDateTime(entry.getCreated())).append("\n");
             b.append("Modified on: ").append(UIUtils.asShortLocalizedDateTime(entry.getModified())).append("\n");
             b.append("Size: ").append(UIUtils.formatBytes(entry.getSize())).append("\n");
-            if (entry.getType().equals(ContentType.DIRECTORY)) {
+            if (entry.getType().equals(FileEntryType.DIRECTORY)) {
                 b.append(entry.getFiles()).append(" Files, ").append(entry.getDirectories()).append(" Directories").append("\n");
             }
             byte[] sha256 = entry.getSha256();
@@ -522,7 +522,7 @@ public class ValidateDialog extends javax.swing.JDialog implements ContentListVa
     }
 
     @Override
-    public void onEntryAccepted(ContentListValidator.ValidatorReason reason, Object expected, Object found) throws IOException, InterruptedException {
+    public void onEntryAccepted(PhantomValidator.ValidatorReason reason, Object expected, Object found) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             switch (reason) {
                 case EXISTS -> {
@@ -545,7 +545,7 @@ public class ValidateDialog extends javax.swing.JDialog implements ContentListVa
     }
 
     @Override
-    public void onEntryRefused(ContentListValidator.ValidatorReason reason, Object expected, Object found) throws IOException, InterruptedException {
+    public void onEntryRefused(PhantomValidator.ValidatorReason reason, Object expected, Object found) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             log("WARNING!");
             log("Refused: " + this.entry.getPath().toString());
