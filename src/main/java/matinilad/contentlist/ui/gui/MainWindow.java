@@ -910,7 +910,9 @@ public class MainWindow extends javax.swing.JFrame {
     }
 
     private void createButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_createButtonActionPerformed
-        JFileChooser chooser = new JFileChooser();
+        NewCreateDialog create = new NewCreateDialog(this, true);
+        create.setVisible(true);
+        /*JFileChooser chooser = new JFileChooser();
         chooser.setDialogType(JFileChooser.SAVE_DIALOG);
         chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
         FileFilter csvFile = new FileNameExtensionFilter("CSV File (.csv)", "csv");
@@ -918,15 +920,15 @@ public class MainWindow extends javax.swing.JFrame {
         chooser.setMultiSelectionEnabled(false);
         int result = chooser.showSaveDialog(this);
         if (result == JFileChooser.APPROVE_OPTION) {
-            File selected = chooser.getSelectedFile();
-            if (!selected.getName().contains(".")) {
-                selected = new File(selected.getParentFile(), selected.getName() + ".csv");
-            }
-            println(INFO_LEVEL, "Output File: " + selected.toString());
-            CreateFileList createFileList = new CreateFileList(selected, this, true);
-            createFileList.setLocationRelativeTo(this);
-            createFileList.setVisible(true);
+        File selected = chooser.getSelectedFile();
+        if (!selected.getName().contains(".")) {
+        selected = new File(selected.getParentFile(), selected.getName() + ".csv");
         }
+        println(INFO_LEVEL, "Output File: " + selected.toString());
+        CreateFileList createFileList = new CreateFileList(selected, this, true);
+        createFileList.setLocationRelativeTo(this);
+        createFileList.setVisible(true);
+        }*/
     }//GEN-LAST:event_createButtonActionPerformed
 
     private void aboutButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_aboutButtonActionPerformed

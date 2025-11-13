@@ -43,12 +43,7 @@ import matinilad.contentlist.phantomfs.PhantomPath;
  * @author Cien
  */
 public class FileEntryCreator {
-
-    public static interface Factory {
-
-        public FileEntryCreator newFileEntryCreator();
-    }
-
+    
     private boolean sha256Enabled = true;
     private int sampleSize = 24;
 

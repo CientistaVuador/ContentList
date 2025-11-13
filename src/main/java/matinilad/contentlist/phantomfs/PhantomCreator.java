@@ -71,7 +71,7 @@ public abstract class PhantomCreator {
                     writer.writeFileEntry(entry);
                 }
             };
-            creator.setFileEntryCreatorFactory(() -> new FileEntryCreator() {
+            creator.setFileEntryCreator(new FileEntryCreator() {
                 @Override
                 protected void onEntryCreated(FileEntry entry) throws IOException, InterruptedException {
                     if (callbacks != null) {
@@ -95,23 +95,23 @@ public abstract class PhantomCreator {
         }
     }
     
-    private FileEntryCreator.Factory fileEntryCreatorFactory = FileEntryCreator::new;
+    private FileEntryCreator fileEntryCreator = new FileEntryCreator();
 
     public PhantomCreator() {
 
     }
 
-    public FileEntryCreator.Factory getFileEntryCreatorFactory() {
-        return fileEntryCreatorFactory;
+    public FileEntryCreator getFileEntryCreator() {
+        return fileEntryCreator;
     }
 
-    public void setFileEntryCreatorFactory(FileEntryCreator.Factory fileEntryCreatorFactory) {
-        if (fileEntryCreatorFactory == null) {
-            fileEntryCreatorFactory = FileEntryCreator::new;
+    public void setFileEntryCreator(FileEntryCreator fileEntryCreator) {
+        if (fileEntryCreator == null) {
+            fileEntryCreator = new FileEntryCreator();
         }
-        this.fileEntryCreatorFactory = fileEntryCreatorFactory;
+        this.fileEntryCreator = fileEntryCreator;
     }
-
+    
     protected boolean onShouldInterrupt() throws IOException, InterruptedException {
         return Thread.interrupted();
     }
@@ -169,9 +169,8 @@ public abstract class PhantomCreator {
             }
 
             onShouldFileBeRejected(file);
-
-            FileEntryCreator creator = getFileEntryCreatorFactory().newFileEntryCreator();
-            FileEntry entry = creator.create(file, depth);
+            
+            FileEntry entry = getFileEntryCreator().create(file, depth);
 
             if (entry.getType().equals(FileEntryType.DIRECTORY)) {
                 parent.setDirectories(parent.getDirectories() + 1);
@@ -223,7 +222,7 @@ public abstract class PhantomCreator {
     public void create(Path... files) throws IOException, InterruptedException {
         List<Path> fileList = validateAndSort(files);
         
-        FileEntry root = getFileEntryCreatorFactory().newFileEntryCreator().create(null, 0);
+        FileEntry root = getFileEntryCreator().create(null, 0);
         root.setCreated(System.currentTimeMillis());
         for (Path p : fileList) {
             createRecursively(root, p, 0);
