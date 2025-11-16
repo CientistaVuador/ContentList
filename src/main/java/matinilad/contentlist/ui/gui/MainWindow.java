@@ -27,7 +27,6 @@
 package matinilad.contentlist.ui.gui;
 
 import java.awt.Desktop;
-import java.awt.MenuItem;
 import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.Window;
@@ -46,33 +45,24 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.SynchronousQueue;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.ImageIcon;
-import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
-import javax.swing.TransferHandler;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableModel;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.PhantomFileSystem;
 import matinilad.contentlist.phantomfs.PhantomPath;
@@ -84,178 +74,15 @@ import matinilad.contentlist.ui.UIUtils;
  */
 @SuppressWarnings("serial")
 public class MainWindow extends javax.swing.JFrame {
-
-    private static class ContentPathTableModel extends DefaultTableModel {
-
-        private static final String[] header = new String[]{"Type", "Name", "Size", "Created", "Modified"};
-        
-        private static String getName(PhantomFileSystem fs, PhantomPath p) {
-            String name = p.getName();
-            if (".".equals(name) || "..".equals(name)) {
-                String realPathName = fs.toRealPath(p).getName();
-                if (realPathName == null) {
-                    realPathName = "(root)";
-                }
-                if (name.equals(".")) {
-                    return ". [current] "+realPathName;
-                }
-                if (name.equals("..")) {
-                    return ".. [parent] "+realPathName;
-                }
-            }
-            return (name == null ? "(root)" : name);
-        }
-        
-        private static Object[][] createTableData(PhantomFileSystem fs, PhantomPath[] paths) {
-            Objects.requireNonNull(fs, "File system is null");
-            Objects.requireNonNull(paths, "Paths is null");
-            Object[][] tableData = new Object[paths.length][header.length];
-            for (int row = 0; row < paths.length; row++) {
-                Object[] rowData = new Object[header.length];
-                Arrays.fill(rowData, "");
-
-                PhantomPath p = paths[row];
-                FileEntry entry = fs.getEntry(p);
-
-                String name = getName(fs, p);
-                rowData[1] = name;
-
-                if (entry != null) {
-                    rowData[0] = entry.getType().toString();
-                    rowData[2] = UIUtils.formatBytes(entry.getSize());
-                    rowData[3] = UIUtils.asShortLocalizedDateTime(entry.getCreated());
-                    rowData[4] = UIUtils.asShortLocalizedDateTime(entry.getModified());
-                }
-                tableData[row] = rowData;
-            }
-            return tableData;
-        }
-
-        private static final String[] searchHeader = new String[]{"Type", "Name", "Path", "Size"};
-
-        private static Object[][] createSearchModeTableData(PhantomFileSystem fs, PhantomPath[] paths) {
-            Objects.requireNonNull(fs, "File system is null");
-            Objects.requireNonNull(paths, "Paths is null");
-            Object[][] tableData = new Object[paths.length][searchHeader.length];
-            for (int row = 0; row < paths.length; row++) {
-                Object[] rowData = new Object[searchHeader.length];
-                Arrays.fill(rowData, "");
-
-                PhantomPath p = paths[row];
-                FileEntry entry = fs.getEntry(p);
-
-                String name = getName(fs, p);
-                rowData[1] = name;
-
-                if (entry != null) {
-                    rowData[0] = entry.getType().toString();
-                    rowData[2] = entry.getPath().getParent().toString();
-                    rowData[3] = UIUtils.formatBytes(entry.getSize());
-                }
-                tableData[row] = rowData;
-            }
-            return tableData;
-        }
-
-        private final PhantomFileSystem fileSystem;
-        private final boolean searchMode;
-        private PhantomPath[] paths = new PhantomPath[0];
-
-        public ContentPathTableModel(PhantomFileSystem fs, boolean searchMode) {
-            super(searchMode ? searchHeader : header, 0);
-            this.fileSystem = fs;
-            this.searchMode = searchMode;
-        }
-
-        public PhantomFileSystem getFileSystem() {
-            return fileSystem;
-        }
-
-        public boolean isSearchMode() {
-            return searchMode;
-        }
-
-        public PhantomPath getContentPath(int index) {
-            return this.paths[index];
-        }
-
-        public void updatePaths(PhantomPath[] newData) {
-            setRowCount(0);
-            Object[][] tableData;
-            if (isSearchMode()) {
-                tableData = createSearchModeTableData(this.fileSystem, newData);
-            } else {
-                tableData = createTableData(this.fileSystem, newData);
-            }
-            for (int i = 0; i < tableData.length; i++) {
-                addRow(tableData[i]);
-            }
-            this.paths = newData.clone();
-        }
-
-        @Override
-        public boolean isCellEditable(int row, int column) {
-            return false;
-        }
-
-    }
-
-    private abstract static class FileTransferHandler extends TransferHandler {
-
-        public FileTransferHandler() {
-            super(null);
-        }
-
-        @Override
-        public int getSourceActions(JComponent c) {
-            return TransferHandler.LINK;
-        }
-
-        @Override
-        public boolean canImport(TransferHandler.TransferSupport support) {
-            return support.isDataFlavorSupported(DataFlavor.javaFileListFlavor);
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public boolean importData(TransferHandler.TransferSupport support) {
-            DataFlavor[] flavors = support.getTransferable().getTransferDataFlavors();
-            boolean found = false;
-            for (DataFlavor e : flavors) {
-                if (e.equals(DataFlavor.javaFileListFlavor)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                Toolkit.getDefaultToolkit().beep();
-                return false;
-            }
-            try {
-                List<File> files = (List<File>) support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
-                if (files.isEmpty()) {
-                    Toolkit.getDefaultToolkit().beep();
-                    return false;
-                }
-                return process(files);
-            } catch (UnsupportedFlavorException | IOException ex) {
-                ex.printStackTrace(System.out);
-                Toolkit.getDefaultToolkit().beep();
-                return false;
-            }
-        }
-
-        protected abstract boolean process(List<File> files);
-
-    }
-
+    
     public static final int INFO_LEVEL = 0;
     public static final int WARN_LEVEL = 1;
     public static final int ERROR_LEVEL = 2;
 
+    private StatusDialog log;
+    private About about;
+    
     private final ExecutorService searchThread = Executors.newSingleThreadExecutor();
-    private final Log log;
-    private final About about;
 
     private final ImageIcon okIcon = new ImageIcon(MainWindow.class.getResource("check_ok.png"));
     private final ImageIcon failedIcon = new ImageIcon(MainWindow.class.getResource("check_failed.png"));
@@ -274,8 +101,8 @@ public class MainWindow extends javax.swing.JFrame {
     private PhantomPath currentPath = null;
     private PhantomFileSystem fileSystem = null;
 
-    private ContentPathTableModel fileSystemTableModel = null;
-    private ContentPathTableModel searchTableModel = null;
+    private PhantomPathTableModel fileSystemTableModel = null;
+    private PhantomPathTableModel searchTableModel = null;
     private boolean searchModeEnabled = false;
     private Future<?> searchThreadTask = null;
     private long searchId = 0;
@@ -296,10 +123,16 @@ public class MainWindow extends javax.swing.JFrame {
      */
     public MainWindow() {
         initComponents();
-        setLocationRelativeTo(null);
-        this.log = new Log(this, false);
-        this.about = new About(this, true, UIUtils.about());
         setupThemes();
+        setupDialogs();
+        setLocationRelativeTo(null);
+    }
+    
+    private void setupDialogs() {
+        this.log = new StatusDialog(this, true);
+        this.log.removeStatusPanel();
+        this.log.setTitle("Log");
+        this.about = new About(this, true, UIUtils.about());
     }
 
     public void clearLogStatus() {
@@ -729,11 +562,11 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void updateFileTable() {
         PhantomPath[] files = this.fileSystem.listFiles(this.currentPath, true);
-        if (!(this.fileTableList.getModel() instanceof ContentPathTableModel)) {
-            this.fileSystemTableModel = new ContentPathTableModel(this.fileSystem, false);
+        if (!(this.fileTableList.getModel() instanceof PhantomPathTableModel)) {
+            this.fileSystemTableModel = new PhantomPathTableModel(this.fileSystem, false);
             this.fileTableList.setModel(this.fileSystemTableModel);
         }
-        ((ContentPathTableModel) this.fileTableList.getModel()).updatePaths(files);
+        ((PhantomPathTableModel) this.fileTableList.getModel()).updatePaths(files);
         this.fileTableList.setEnabled(true);
     }
 
@@ -853,7 +686,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void formWindowOpened(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowOpened
         clearLogStatus();
-        this.jScrollPane1.setTransferHandler(new FileTransferHandler() {
+        this.jScrollPane1.setTransferHandler(new FileDragAndDrop() {
             @Override
             protected boolean process(List<File> files) {
                 openFileSystemCSV(files.get(0));
@@ -970,10 +803,10 @@ public class MainWindow extends javax.swing.JFrame {
     }
 
     private PhantomPath[] getSelectedPaths() {
-        if (!(this.fileTableList.getModel() instanceof ContentPathTableModel)) {
+        if (!(this.fileTableList.getModel() instanceof PhantomPathTableModel)) {
             return new PhantomPath[0];
         }
-        ContentPathTableModel table = (ContentPathTableModel) this.fileTableList.getModel();
+        PhantomPathTableModel table = (PhantomPathTableModel) this.fileTableList.getModel();
         int[] selectedRows = this.fileTableList.getSelectedRows();
         PhantomPath[] selected = new PhantomPath[selectedRows.length];
         for (int i = 0; i < selected.length; i++) {
@@ -1051,7 +884,7 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_openFileButtonActionPerformed
 
     private void doubleClickOnRow(JTable table, int modelRow) {
-        PhantomPath p = ((ContentPathTableModel) table.getModel()).getContentPath(modelRow);
+        PhantomPath p = ((PhantomPathTableModel) table.getModel()).getContentPath(modelRow);
         if (this.fileSystem.isDirectory(p)) {
             updateCurrentPath(p);
         } else {
@@ -1295,7 +1128,7 @@ public class MainWindow extends javax.swing.JFrame {
         PhantomPath directory = selected.getParent();
         updateCurrentPath(directory);
 
-        if (this.fileTableList.getModel() instanceof ContentPathTableModel model) {
+        if (this.fileTableList.getModel() instanceof PhantomPathTableModel model) {
             int selectedIndex = -1;
             for (int i = 0; i < model.getRowCount(); i++) {
                 if (model.getContentPath(i).equals(selected)) {
@@ -1446,7 +1279,7 @@ public class MainWindow extends javax.swing.JFrame {
 
         this.fileTableList.setEnabled(false);
         if (this.searchTableModel == null) {
-            this.searchTableModel = new ContentPathTableModel(this.fileSystem, true);
+            this.searchTableModel = new PhantomPathTableModel(this.fileSystem, true);
         }
         this.fileTableList.setModel(this.searchTableModel);
         this.searchTableModel.updatePaths(new PhantomPath[]{});

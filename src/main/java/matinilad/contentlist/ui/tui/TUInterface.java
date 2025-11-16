@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Scanner;
@@ -15,7 +16,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.PhantomFileSystem;
-import matinilad.contentlist.ContentListUtils;
 import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.ui.UIUtils;
@@ -238,13 +238,18 @@ public class TUInterface {
                     if (entry.getType().equals(FileEntryType.DIRECTORY)) {
                         out.println("  " + entry.getFiles() + " Files, " + entry.getDirectories() + " Directories");
                     }
+                    
                     byte[] sha256 = entry.getSha256();
                     byte[] sample = entry.getSample();
-                    if (sha256 != null) {
-                        out.println(" SHA256: " + ContentListUtils.toHexString(sha256));
-                    }
-                    if (sample != null) {
-                        out.println(" Sample: " + ContentListUtils.toHexString(sample));
+
+                    if (sha256 != null || sample != null) {
+                        HexFormat hex = HexFormat.of();
+                        if (sha256 != null) {
+                            out.println(" SHA256: " + hex.formatHex(sha256));
+                        }
+                        if (sample != null) {
+                            out.println(" Sample: " + hex.formatHex(sample));
+                        }
                     }
                 }
                 case "search", "csearch", "ecsearch", "esearch" -> {

@@ -26,23 +26,34 @@
  */
 package matinilad.contentlist.ui.gui;
 
+import java.awt.Toolkit;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.logging.ErrorManager;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 import javax.swing.JSeparator;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
  *
  * @author Cien
  */
 @SuppressWarnings("serial")
-public class ProgressBarDialog extends javax.swing.JDialog {
+public class StatusDialog extends javax.swing.JDialog {
+
+    private static final Logger LOGGER = Logger.getLogger(StatusDialog.class.getName());
 
     private final Handler loggerHandler = new Handler() {
         private int warnings = 0;
@@ -52,6 +63,13 @@ public class ProgressBarDialog extends javax.swing.JDialog {
             setFormatter(new SimpleFormatter());
         }
 
+        @Override
+        public synchronized void setLevel(Level newLevel) throws SecurityException {
+            super.setLevel(newLevel);
+            
+            //todo: menu bar logic
+        }
+        
         @Override
         public void publish(LogRecord record) {
             if (!isLoggable(record)) {
@@ -78,7 +96,7 @@ public class ProgressBarDialog extends javax.swing.JDialog {
 
             final boolean finalUpdatedCount = updatedCount;
             SwingUtilities.invokeLater(() -> {
-                ProgressBarDialog.this.logTextArea.append(msg);
+                StatusDialog.this.logTextArea.append(msg);
                 if (finalUpdatedCount) {
                     StringBuilder b = new StringBuilder();
                     b.append(this.warnings);
@@ -93,7 +111,7 @@ public class ProgressBarDialog extends javax.swing.JDialog {
                     } else {
                         b.append(" Errors");
                     }
-                    ProgressBarDialog.this.logCount.setText(b.toString());
+                    StatusDialog.this.logCount.setText(b.toString());
                 }
             });
         }
@@ -112,13 +130,13 @@ public class ProgressBarDialog extends javax.swing.JDialog {
     private long progressTime = System.nanoTime();
     private float currentProgress = 0f;
 
-    public ProgressBarDialog(java.awt.Frame parent, boolean modal) {
+    public StatusDialog(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
         setLocationRelativeTo(parent);
     }
 
-    public ProgressBarDialog(java.awt.Dialog parent, boolean modal) {
+    public StatusDialog(java.awt.Dialog parent, boolean modal) {
         super(parent, modal);
         initComponents();
         setLocationRelativeTo(parent);
@@ -131,21 +149,26 @@ public class ProgressBarDialog extends javax.swing.JDialog {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jPanel1 = new javax.swing.JPanel();
-        jScrollPane1 = new javax.swing.JScrollPane();
-        logTextArea = new javax.swing.JTextArea();
-        logCount = new javax.swing.JLabel();
-        cancelButton = new javax.swing.JButton();
-        jPanel2 = new javax.swing.JPanel();
+        jTabbedPane1 = new javax.swing.JTabbedPane();
+        statusPanel = new javax.swing.JPanel();
+        currentItemName = new javax.swing.JTextField();
         progressBar = new javax.swing.JProgressBar();
         progressLabel = new javax.swing.JLabel();
         estimatedTime = new javax.swing.JLabel();
-        currentItemName = new javax.swing.JTextField();
         currentItemStatus = new javax.swing.JTextField();
+        cancelButton = new javax.swing.JButton();
         currentGlobalStatus = new javax.swing.JTextField();
+        logCount = new javax.swing.JLabel();
+        logPanel = new javax.swing.JPanel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        logTextArea = new javax.swing.JTextArea();
         jMenuBar1 = new javax.swing.JMenuBar();
+        jMenu1 = new javax.swing.JMenu();
+        saveLogButton = new javax.swing.JMenuItem();
         jMenu2 = new javax.swing.JMenu();
         logLevelMenu = new javax.swing.JMenu();
+        jSeparator1 = new javax.swing.JPopupMenu.Separator();
+        clearLogButton = new javax.swing.JMenuItem();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Title");
@@ -156,39 +179,9 @@ public class ProgressBarDialog extends javax.swing.JDialog {
             }
         });
 
-        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Details"));
-
-        logTextArea.setEditable(false);
-        logTextArea.setColumns(20);
-        logTextArea.setRows(5);
-        jScrollPane1.setViewportView(logTextArea);
-
-        logCount.setText("0 Warnings, 0 Errors");
-
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane1)
-                    .addComponent(logCount, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap())
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 108, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(logCount)
-                .addContainerGap())
-        );
-
-        cancelButton.setText("Cancel");
-
-        jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Status"));
+        currentItemName.setEditable(false);
+        currentItemName.setText("Current Item Name");
+        currentItemName.setBorder(null);
 
         progressBar.setMaximum(100000);
         progressBar.setValue(50000);
@@ -199,32 +192,41 @@ public class ProgressBarDialog extends javax.swing.JDialog {
         estimatedTime.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         estimatedTime.setText("10d 10h 10m 10s estimated");
 
-        currentItemName.setEditable(false);
-        currentItemName.setText("Current Item Name");
-        currentItemName.setBorder(null);
-
         currentItemStatus.setEditable(false);
         currentItemStatus.setText("Current Item Status");
         currentItemStatus.setBorder(null);
 
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
-        jPanel2Layout.setHorizontalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
+        cancelButton.setText("Cancel");
+
+        currentGlobalStatus.setEditable(false);
+        currentGlobalStatus.setText("Current Global Status");
+        currentGlobalStatus.setBorder(null);
+
+        logCount.setText("0 Warnings, 0 Errors");
+
+        javax.swing.GroupLayout statusPanelLayout = new javax.swing.GroupLayout(statusPanel);
+        statusPanel.setLayout(statusPanelLayout);
+        statusPanelLayout.setHorizontalGroup(
+            statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(statusPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(statusPanelLayout.createSequentialGroup()
+                        .addComponent(currentGlobalStatus, javax.swing.GroupLayout.DEFAULT_SIZE, 398, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(cancelButton))
+                    .addComponent(currentItemStatus)
+                    .addComponent(logCount, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(progressLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(progressBar, javax.swing.GroupLayout.DEFAULT_SIZE, 466, Short.MAX_VALUE)
                     .addComponent(estimatedTime, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(currentItemName)
-                    .addComponent(currentItemStatus))
+                    .addComponent(progressBar, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
-        jPanel2Layout.setVerticalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addContainerGap()
+        statusPanelLayout.setVerticalGroup(
+            statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(statusPanelLayout.createSequentialGroup()
+                .addGap(12, 12, 12)
                 .addComponent(currentItemName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(progressBar, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -234,12 +236,54 @@ public class ProgressBarDialog extends javax.swing.JDialog {
                 .addComponent(estimatedTime)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(currentItemStatus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(logCount)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 85, Short.MAX_VALUE)
+                .addGroup(statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(cancelButton)
+                    .addComponent(currentGlobalStatus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(12, 12, 12))
         );
 
-        currentGlobalStatus.setEditable(false);
-        currentGlobalStatus.setText("Current Global Status");
-        currentGlobalStatus.setBorder(null);
+        jTabbedPane1.addTab("Status", statusPanel);
+
+        logTextArea.setEditable(false);
+        logTextArea.setColumns(20);
+        logTextArea.setRows(5);
+        jScrollPane1.setViewportView(logTextArea);
+
+        javax.swing.GroupLayout logPanelLayout = new javax.swing.GroupLayout(logPanel);
+        logPanel.setLayout(logPanelLayout);
+        logPanelLayout.setHorizontalGroup(
+            logPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(logPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 476, Short.MAX_VALUE)
+                .addContainerGap())
+        );
+        logPanelLayout.setVerticalGroup(
+            logPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(logPanelLayout.createSequentialGroup()
+                .addGap(12, 12, 12)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 248, Short.MAX_VALUE)
+                .addGap(12, 12, 12))
+        );
+
+        jTabbedPane1.addTab("Details", logPanel);
+
+        jMenu1.setText("File");
+
+        saveLogButton.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        saveLogButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/save.png"))); // NOI18N
+        saveLogButton.setText("Save Log");
+        saveLogButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                saveLogButtonActionPerformed(evt);
+            }
+        });
+        jMenu1.add(saveLogButton);
+
+        jMenuBar1.add(jMenu1);
 
         jMenu2.setText("Edit");
 
@@ -268,6 +312,17 @@ public class ProgressBarDialog extends javax.swing.JDialog {
             }
         }
         jMenu2.add(logLevelMenu);
+        jMenu2.add(jSeparator1);
+
+        clearLogButton.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_D, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        clearLogButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/clear.png"))); // NOI18N
+        clearLogButton.setText("Clear Log");
+        clearLogButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                clearLogButtonActionPerformed(evt);
+            }
+        });
+        jMenu2.add(clearLogButton);
 
         jMenuBar1.add(jMenu2);
 
@@ -279,27 +334,15 @@ public class ProgressBarDialog extends javax.swing.JDialog {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(currentGlobalStatus)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cancelButton)))
+                .addComponent(jTabbedPane1)
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(12, 12, 12)
-                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(12, 12, 12)
-                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGap(12, 12, 12)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cancelButton)
-                    .addComponent(currentGlobalStatus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(6, 6, 6))
+                .addContainerGap()
+                .addComponent(jTabbedPane1)
+                .addContainerGap())
         );
 
         pack();
@@ -308,6 +351,55 @@ public class ProgressBarDialog extends javax.swing.JDialog {
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
         getCancelButton().doClick();
     }//GEN-LAST:event_formWindowClosing
+
+    private void clearLogButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearLogButtonActionPerformed
+        int result = JOptionPane
+                .showConfirmDialog(
+                        this, "Clear Log?", "Confirm Action",
+                        JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (result != JOptionPane.YES_OPTION) {
+            return;
+        }
+        this.logTextArea.setText("");
+    }//GEN-LAST:event_clearLogButtonActionPerformed
+
+    private void saveLogButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveLogButtonActionPerformed
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogType(JFileChooser.SAVE_DIALOG);
+        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        FileNameExtensionFilter logFile = new FileNameExtensionFilter("Log File (.log)", "log");
+        FileNameExtensionFilter textFile = new FileNameExtensionFilter("Text File (.txt)", "txt");
+        chooser.addChoosableFileFilter(logFile);
+        chooser.addChoosableFileFilter(textFile);
+        chooser.setFileFilter(logFile);
+        chooser.setMultiSelectionEnabled(false);
+        int result = chooser.showSaveDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File selected = chooser.getSelectedFile();
+        if (!selected.getName().contains(".")) {
+            String extension = ".log";
+            if (chooser.getFileFilter() instanceof FileNameExtensionFilter e) {
+                String[] extensions = e.getExtensions();
+                if (extensions != null && extensions.length > 0) {
+                    extension = "." + extensions[0];
+                }
+            }
+            selected = new File(selected.getParentFile(), selected.getName() + extension);
+        }
+        try {
+            try (FileOutputStream o = new FileOutputStream(selected)) {
+                o.write(this.logTextArea.getText().getBytes(StandardCharsets.UTF_8));
+            }
+            LOGGER.log(Level.INFO, "Log saved to: {0}", selected.toString());
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Failed to save file! Check log for details", "Failed!", JOptionPane.ERROR_MESSAGE);
+            LOGGER.log(Level.WARNING, "Failed to save log to: " + selected.toString(), ex);
+            Toolkit.getDefaultToolkit().beep();
+        }
+    }//GEN-LAST:event_saveLogButtonActionPerformed
 
     public Handler getLoggerHandler() {
         return loggerHandler;
@@ -376,22 +468,41 @@ public class ProgressBarDialog extends javax.swing.JDialog {
     public JButton getCancelButton() {
         return cancelButton;
     }
+
+    public void removeStatusPanel() {
+        for (int i = 0; i < this.jTabbedPane1.getTabCount(); i++) {
+            if (this.jTabbedPane1.getComponentAt(i) == this.statusPanel) {
+                this.jTabbedPane1.removeTabAt(i);
+                break;
+            }
+        }
+    }
     
+    @Deprecated
+    public void println(String line) {
+        this.logTextArea.append(line + "\n");
+    }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton cancelButton;
+    private javax.swing.JMenuItem clearLogButton;
     private javax.swing.JTextField currentGlobalStatus;
     private javax.swing.JTextField currentItemName;
     private javax.swing.JTextField currentItemStatus;
     private javax.swing.JLabel estimatedTime;
+    private javax.swing.JMenu jMenu1;
     private javax.swing.JMenu jMenu2;
     private javax.swing.JMenuBar jMenuBar1;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JSeparator jSeparator1;
+    private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JLabel logCount;
     private javax.swing.JMenu logLevelMenu;
+    private javax.swing.JPanel logPanel;
     private javax.swing.JTextArea logTextArea;
     private javax.swing.JProgressBar progressBar;
     private javax.swing.JLabel progressLabel;
+    private javax.swing.JMenuItem saveLogButton;
+    private javax.swing.JPanel statusPanel;
     // End of variables declaration//GEN-END:variables
 }

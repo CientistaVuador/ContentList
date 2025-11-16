@@ -451,7 +451,7 @@ public class NewCreateDialog extends javax.swing.JDialog {
         }
     }//GEN-LAST:event_inputListRemoveButtonActionPerformed
 
-    private void create(ProgressBarDialog progressBar, File outputFile, List<File> inputFiles) throws IOException, InterruptedException {
+    private void create(StatusDialog progressBar, File outputFile, List<File> inputFiles) throws IOException, InterruptedException {
         try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(outputFile)), StandardCharsets.UTF_8), 0)) {
             AtomicInteger entriesWritten = new AtomicInteger();
             PhantomCreator creator = new PhantomCreator() {
@@ -523,7 +523,7 @@ public class NewCreateDialog extends javax.swing.JDialog {
             inputFiles.add(this.inputList.getModel().getElementAt(i));
         }
         
-        ProgressBarDialog dialog = new ProgressBarDialog(this, true);
+        StatusDialog dialog = new StatusDialog(this, true);
         dialog.setTitle(output.toString());
         LOGGER.addHandler(dialog.getLoggerHandler());
         

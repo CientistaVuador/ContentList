@@ -7,10 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.Objects;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.PhantomCreator;
-import matinilad.contentlist.ContentListUtils;
 import matinilad.contentlist.phantomfs.PhantomValidator;
 import static matinilad.contentlist.phantomfs.PhantomValidator.ValidatorReason.EXISTS;
 import static matinilad.contentlist.phantomfs.PhantomValidator.ValidatorReason.HASH;
@@ -296,6 +296,8 @@ public class CLInterface {
                         this.ignoreWarnings = true;
                     }
                     if (!this.ignoreWarnings) {
+                        HexFormat hex = HexFormat.of();
+                        
                         out.println("Warning:");
                         out.println(" Path: " + this.currentEntry.getPath().toString());
                         out.println(" Was refused due to:");
@@ -310,12 +312,12 @@ public class CLInterface {
                                 out.println("  Expected size " + UIUtils.formatBytes((long) expected) + "; found " + UIUtils.formatBytes((long) found));
                             }
                             case SAMPLE -> {
-                                out.println("  Expected sample " + ContentListUtils.toHexString((byte[]) expected));
-                                out.println("            found " + ContentListUtils.toHexString((byte[]) found));
+                                out.println("  Expected sample " + hex.formatHex((byte[]) expected));
+                                out.println("            found " + hex.formatHex((byte[]) found));
                             }
                             case HASH -> {
-                                out.println("  Expected hash " + ContentListUtils.toHexString((byte[]) expected));
-                                out.println("          found " + ContentListUtils.toHexString((byte[]) found));
+                                out.println("  Expected hash " + hex.formatHex((byte[]) expected));
+                                out.println("          found " + hex.formatHex((byte[]) found));
                             }
                         }
                     }

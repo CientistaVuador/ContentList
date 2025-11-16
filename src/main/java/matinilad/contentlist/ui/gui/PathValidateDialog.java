@@ -29,11 +29,11 @@ package matinilad.contentlist.ui.gui;
 import java.awt.Toolkit;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HexFormat;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.SwingUtilities;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
-import matinilad.contentlist.ContentListUtils;
 import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.phantomfs.entry.FileEntryValidatorReason;
 import matinilad.contentlist.ui.UIUtils;
@@ -44,11 +44,11 @@ import matinilad.contentlist.ui.UIUtils;
  */
 @SuppressWarnings("serial")
 public class PathValidateDialog extends javax.swing.JDialog implements FileEntry.ValidationCallbacks {
-
+    
     private static final AtomicLong instances = new AtomicLong(0);
-
+    
     private final long instance = instances.getAndIncrement();
-
+    
     private final Thread thread;
     private final FileEntry[] entries;
     private final Path baseDirectory;
@@ -66,7 +66,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
         Objects.requireNonNull(baseDirectory, "baseDirectory is null");
         this.entries = entries;
         this.baseDirectory = baseDirectory;
-
+        
         this.thread = new Thread(() -> {
             try {
                 run();
@@ -110,6 +110,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
             public void windowClosed(java.awt.event.WindowEvent evt) {
                 formWindowClosed(evt);
             }
+
             public void windowOpened(java.awt.event.WindowEvent evt) {
                 formWindowOpened(evt);
             }
@@ -126,17 +127,17 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jScrollPane1)
-                .addContainerGap())
+                jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addComponent(jScrollPane1)
+                                .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 144, Short.MAX_VALUE)
-                .addContainerGap())
+                jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 144, Short.MAX_VALUE)
+                                .addContainerGap())
         );
 
         jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("File"));
@@ -191,41 +192,41 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(currentFileProgressBar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(currentFileStatus, javax.swing.GroupLayout.DEFAULT_SIZE, 566, Short.MAX_VALUE)
-                    .addComponent(currentFile, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addComponent(existsCheckBox)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(typeCheckBox)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(sizeCheckBox)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(sampleCheckBox)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(hashCheckBox)
-                        .addGap(0, 0, Short.MAX_VALUE)))
-                .addContainerGap())
+                jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(jPanel2Layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(currentFileProgressBar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(currentFileStatus, javax.swing.GroupLayout.DEFAULT_SIZE, 566, Short.MAX_VALUE)
+                                        .addComponent(currentFile, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addGroup(jPanel2Layout.createSequentialGroup()
+                                                .addComponent(existsCheckBox)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(typeCheckBox)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(sizeCheckBox)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(sampleCheckBox)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(hashCheckBox)
+                                                .addGap(0, 0, Short.MAX_VALUE)))
+                                .addContainerGap())
         );
         jPanel2Layout.setVerticalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addComponent(currentFile, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(currentFileProgressBar, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(currentFileStatus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(existsCheckBox)
-                    .addComponent(typeCheckBox)
-                    .addComponent(sizeCheckBox)
-                    .addComponent(sampleCheckBox)
-                    .addComponent(hashCheckBox)))
+                jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(jPanel2Layout.createSequentialGroup()
+                                .addComponent(currentFile, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(currentFileProgressBar, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(currentFileStatus, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(existsCheckBox)
+                                        .addComponent(typeCheckBox)
+                                        .addComponent(sizeCheckBox)
+                                        .addComponent(sampleCheckBox)
+                                        .addComponent(hashCheckBox)))
         );
 
         cancelButton.setText("Cancel");
@@ -240,30 +241,30 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanel2, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jPanel1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addComponent(entriesStatus, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cancelButton)))
-                .addContainerGap())
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jPanel2, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(jPanel1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                                .addComponent(entriesStatus, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(cancelButton)))
+                                .addContainerGap())
         );
         layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cancelButton)
-                    .addComponent(entriesStatus))
-                .addContainerGap())
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(cancelButton)
+                                        .addComponent(entriesStatus))
+                                .addContainerGap())
         );
 
         pack();
@@ -277,7 +278,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
             }
         }
     }
-
+    
     private void run() throws Throwable {
         SwingUtilities.invokeLater(() -> {
             log(MainWindow.INFO_LEVEL, "Running");
@@ -288,7 +289,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
         }
         SwingUtilities.invokeLater(() -> {
             if (this.refused != 0) {
-                setTitle("Done ("+this.refused+" Failed!)");
+                setTitle("Done (" + this.refused + " Failed!)");
             } else {
                 setTitle("Done");
             }
@@ -326,11 +327,11 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
         this.sampleCheckBox.setSelected(false);
         this.hashCheckBox.setSelected(false);
         this.entriesStatus.setText("");
-
+        
         this.thread.start();
         log(MainWindow.INFO_LEVEL, "Processing thread initiated");
     }//GEN-LAST:event_formWindowOpened
-    
+
     private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelButtonActionPerformed
         if (this.thread.isAlive()) {
             setTitle("Canceled");
@@ -364,7 +365,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
     private javax.swing.JCheckBox sizeCheckBox;
     private javax.swing.JCheckBox typeCheckBox;
     // End of variables declaration//GEN-END:variables
-    
+
     private void onException(Throwable t) {
         if (t == null || t instanceof InterruptedException) {
             return;
@@ -374,7 +375,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
         log(MainWindow.ERROR_LEVEL, "Fatal error!");
         log(MainWindow.ERROR_LEVEL, UIUtils.stacktraceOf(t));
     }
-
+    
     private FileEntry entry = null;
     private Path path = null;
     private boolean currentEntryRefused = false;
@@ -382,7 +383,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
     private long size = 0;
     private int accepted = 0;
     private int refused = 0;
-
+    
     @Override
     public void setEntry(FileEntry entry) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
@@ -391,7 +392,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
             this.currentEntryRefused = false;
             this.initialTime = System.currentTimeMillis();
             this.size = 0;
-
+            
             StringBuilder b = new StringBuilder();
             b.append(entry.getPath().toString()).append("\n");
             b.append("Type: ").append(entry.getType()).append("\n");
@@ -403,29 +404,32 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
             }
             byte[] sha256 = entry.getSha256();
             byte[] sample = entry.getSample();
-            if (sha256 != null) {
-                b.append("SHA256: ").append(ContentListUtils.toHexString(sha256)).append("\n");
-            }
-            if (sample != null) {
-                b.append("Sample: ").append(ContentListUtils.toHexString(sample)).append("\n");
+            if (sha256 != null || sample != null) {
+                HexFormat hex = HexFormat.of();
+                if (sha256 != null) {
+                    b.append("SHA256: ").append(hex.formatHex(sha256)).append("\n");
+                }
+                if (sample != null) {
+                    b.append("Sample: ").append(hex.formatHex(sample)).append("\n");
+                }
             }
             this.currentEntry.setText(b.toString());
             this.currentFile.setText("");
-
+            
             this.existsCheckBox.setSelected(false);
             this.typeCheckBox.setSelected(false);
             this.sizeCheckBox.setSelected(false);
             this.sampleCheckBox.setSelected(false);
             this.hashCheckBox.setSelected(false);
-
+            
             this.currentFileProgressBar.setValue(0);
             this.currentFileStatus.setText("");
-
+            
             this.currentEntryRefused = false;
             this.initialTime = System.currentTimeMillis();
         });
     }
-
+    
     @Override
     public void setPath(Path path) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
@@ -433,14 +437,14 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
             this.currentFile.setText(path.toString());
         });
     }
-
+    
     @Override
     public void setSize(long size) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             this.size = size;
         });
     }
-
+    
     @Override
     public void progressUpdate(long bytes) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
@@ -457,7 +461,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
             this.currentFileStatus.setText(UIUtils.formatPercentage(bytes, this.size) + " - " + UIUtils.formatBytes(bytes) + " out of " + UIUtils.formatBytes(this.size) + " - " + UIUtils.formatSpeed(averageSpeed));
         });
     }
-
+    
     @Override
     public void accepted(FileEntryValidatorReason reason) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
@@ -480,10 +484,12 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
             }
         });
     }
-
+    
     @Override
     public void refused(FileEntryValidatorReason reason, Object foundValue) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
+            HexFormat hex = HexFormat.of();
+            
             log(MainWindow.WARN_LEVEL, "WARNING!");
             log(MainWindow.WARN_LEVEL, "Refused: " + this.entry.getPath().toString());
             log(MainWindow.WARN_LEVEL, "Real Path: " + this.path.toString());
@@ -499,19 +505,19 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
                 }
                 case SAMPLE -> {
                     log(MainWindow.WARN_LEVEL, "Reason: Wrong sample!");
-                    log(MainWindow.WARN_LEVEL, " Expected: " + ContentListUtils.toHexString(this.entry.getSample()));
-                    log(MainWindow.WARN_LEVEL, "    Found: " + ContentListUtils.toHexString((byte[]) foundValue));
+                    log(MainWindow.WARN_LEVEL, " Expected: " + hex.formatHex(this.entry.getSample()));
+                    log(MainWindow.WARN_LEVEL, "    Found: " + hex.formatHex((byte[]) foundValue));
                 }
                 case HASH -> {
                     log(MainWindow.WARN_LEVEL, "Reason: Wrong hash!");
-                    log(MainWindow.WARN_LEVEL, " Expected: " + ContentListUtils.toHexString(this.entry.getSha256()));
-                    log(MainWindow.WARN_LEVEL, "    Found: " + ContentListUtils.toHexString((byte[]) foundValue));
+                    log(MainWindow.WARN_LEVEL, " Expected: " + hex.formatHex(this.entry.getSha256()));
+                    log(MainWindow.WARN_LEVEL, "    Found: " + hex.formatHex((byte[]) foundValue));
                 }
             }
             this.currentEntryRefused = true;
         });
     }
-
+    
     public void entryFinish() {
         SwingUtilities.invokeLater(() -> {
             if (this.currentEntryRefused) {

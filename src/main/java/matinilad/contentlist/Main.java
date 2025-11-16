@@ -1,5 +1,7 @@
-package matinilad.contentlist.ui;
+package matinilad.contentlist;
 
+import java.beans.XMLEncoder;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import matinilad.contentlist.ui.cli.CLInterface;
@@ -12,7 +14,7 @@ import matinilad.contentlist.ui.tui.TUInterface;
  */
 public class Main {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         if (args == null || args.length == 0) {
             GUInterface.run();
             return;
