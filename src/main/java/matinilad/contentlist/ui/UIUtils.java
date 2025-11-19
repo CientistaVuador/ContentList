@@ -62,20 +62,24 @@ public class UIUtils {
         return String.format("%.2f", (((double)current) / total) * 100.0)+"%";
     }
     
+    public static String formatBytesShort(long bytes) {
+        if (bytes > TERABYTE) {
+            return String.format("%.2f", ((double)bytes) / TERABYTE)+" TB";
+        }
+        if (bytes > GIGABYTE) {
+            return String.format("%.2f", ((double)bytes) / GIGABYTE)+" GB";
+        }
+        if (bytes > MEGABYTE) {
+            return String.format("%.2f", ((double)bytes) / MEGABYTE)+" MB";
+        }
+        if (bytes > KILOBYTE) {
+            return String.format("%.2f", ((double)bytes) / KILOBYTE)+" KB";
+        }
+        return bytes+" B";
+    }
+    
     public static String formatSpeed(long bytesPerSecond) {
-        if (bytesPerSecond > TERABYTE) {
-            return String.format("%.2f", ((double)bytesPerSecond) / TERABYTE)+" TB/s";
-        }
-        if (bytesPerSecond > GIGABYTE) {
-            return String.format("%.2f", ((double)bytesPerSecond) / GIGABYTE)+" GB/s";
-        }
-        if (bytesPerSecond > MEGABYTE) {
-            return String.format("%.2f", ((double)bytesPerSecond) / MEGABYTE)+" MB/s";
-        }
-        if (bytesPerSecond > KILOBYTE) {
-            return String.format("%.2f", ((double)bytesPerSecond) / KILOBYTE)+" KB/s";
-        }
-        return bytesPerSecond+" B/s";
+        return formatBytesShort(bytesPerSecond)+"/s";
     }
     
     public static String formatBytes(long bytes) {

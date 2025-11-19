@@ -361,6 +361,7 @@ public class StatusDialog extends javax.swing.JDialog {
             return;
         }
         this.logTextArea.setText("");
+        Toolkit.getDefaultToolkit().beep();
     }//GEN-LAST:event_clearLogButtonActionPerformed
 
     private void saveLogButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveLogButtonActionPerformed
