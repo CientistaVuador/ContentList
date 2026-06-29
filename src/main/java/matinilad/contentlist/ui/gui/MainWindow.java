@@ -31,16 +31,13 @@ import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.ClipboardOwner;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -80,13 +77,6 @@ public class MainWindow extends javax.swing.JFrame {
 
     private static final Logger LOGGER = Logger.getLogger(MainWindow.class.getName());
 
-    @Deprecated
-    public static final int INFO_LEVEL = 0;
-    @Deprecated
-    public static final int ERROR_LEVEL = 1;
-    @Deprecated
-    public static final int WARN_LEVEL = 2;
-
     private StatusDialog log;
     private About about;
 
@@ -95,9 +85,6 @@ public class MainWindow extends javax.swing.JFrame {
     private final ImageIcon okIcon = new ImageIcon(MainWindow.class.getResource("check_ok.png"));
     private final ImageIcon failedIcon = new ImageIcon(MainWindow.class.getResource("check_failed.png"));
 
-    private final ImageIcon infoIcon = new ImageIcon(MainWindow.class.getResource("info.png"));
-    private final ImageIcon warnIcon = new ImageIcon(MainWindow.class.getResource("warn.png"));
-    private final ImageIcon errorIcon = new ImageIcon(MainWindow.class.getResource("error.png"));
     private final ImageIcon themeIcon = new ImageIcon(MainWindow.class.getResource("theme.png"));
 
     private boolean restartWarningEmmited = false;
@@ -116,11 +103,8 @@ public class MainWindow extends javax.swing.JFrame {
     private Future<?> searchThreadTask = null;
     private long searchId = 0;
 
-    private final Timer searchTimer = new Timer(500, new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            updateSearch();
-        }
+    private final Timer searchTimer = new Timer(500, (ActionEvent e) -> {
+        updateSearch();
     });
 
     {
@@ -540,7 +524,7 @@ public class MainWindow extends javax.swing.JFrame {
         FileEntry root = this.fileSystem.getEntry(PhantomPath.of("/"));
         FileEntry current = this.fileSystem.getEntry(this.currentPath);
 
-        String rootName = root.getMetadataName();
+        String rootName = root.getMetadata().readString(FileEntry.METADATA_NAME);
         if (rootName == null) {
             rootName = "Unnamed";
         }
@@ -592,7 +576,7 @@ public class MainWindow extends javax.swing.JFrame {
         LOGGER.log(Level.INFO, "input file: {0}", file.toString());
         LOGGER.log(Level.INFO, "root directory suggestion: {0}", this.rootDirectorySuggestion);
 
-        OpenFileSystemDialog s = new OpenFileSystemDialog(file, this, true);
+        OpenDialog s = new OpenDialog(file, this, true);
         s.setLocationRelativeTo(this);
         s.setVisible(true);
     }
@@ -615,25 +599,6 @@ public class MainWindow extends javax.swing.JFrame {
         this.log.setLocationRelativeTo(this);
         this.log.setVisible(true);
     }//GEN-LAST:event_logButtonActionPerformed
-
-    @Deprecated
-    public void println(int level, String string) {
-        switch (level) {
-            case INFO_LEVEL -> {
-                LOGGER.log(Level.INFO, string);
-            }
-            case WARN_LEVEL -> {
-                LOGGER.log(Level.WARNING, string);
-            }
-            case ERROR_LEVEL -> {
-                LOGGER.log(Level.SEVERE, string);
-            }
-            default -> {
-                LOGGER.log(Level.INFO, string);
-            }
-        }
-
-    }
 
     @SuppressWarnings("serial")
     static class ThemeJMenuItem extends JMenuItem {
@@ -744,7 +709,7 @@ public class MainWindow extends javax.swing.JFrame {
     }
 
     private void createButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_createButtonActionPerformed
-        NewCreateDialog create = new NewCreateDialog(this, true);
+        NewDialog create = new NewDialog(this, true);
         create.setVisible(true);
     }//GEN-LAST:event_createButtonActionPerformed
 
@@ -882,76 +847,68 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_fileTableListMouseClicked
 
     private void filePopupMenuPopupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent evt) {//GEN-FIRST:event_filePopupMenuPopupMenuWillBecomeVisible
-        {
-            boolean enableOptions = this.fileTableList.getSelectedRowCount() != 0;
-            for (int i = 0; i < this.filePopupMenu.getComponentCount(); i++) {
-                this.filePopupMenu.getComponent(i).setEnabled(enableOptions);
-            }
+        boolean enableOptions = this.fileTableList.getSelectedRowCount() != 0;
+        for (int i = 0; i < this.filePopupMenu.getComponentCount(); i++) {
+            this.filePopupMenu.getComponent(i).setEnabled(enableOptions);
         }
 
-        {
-            boolean enableGotoDirectory = this.fileTableList.getSelectedRowCount() == 1;
-            this.openLocationButton.setEnabled(enableGotoDirectory);
-        }
+        boolean enableGotoDirectory = this.fileTableList.getSelectedRowCount() == 1;
+        this.openLocationButton.setEnabled(enableGotoDirectory);
 
-        {
-            this.existsSystemMenu.removeAll();
-            PhantomPath[] selected = getSelectedPaths();
-            boolean checkFailed = false;
-            int existsConfirmed = 0;
-            for (PhantomPath s : selected) {
-                boolean exists = false;
-                if (this.rootDirectory != null) {
-                    Path p = s.resolveToPath(this.rootDirectory.toPath());
-                    exists = Files.exists(p);
-                }
-
-                String name = this.fileSystem.toRealPath(s).getName();
-                if (name == null) {
-                    name = "(root)";
-                }
-                JMenuItem menuItem = new JMenuItem(name);
-                if (exists) {
-                    menuItem.setIcon(this.okIcon);
-                    existsConfirmed++;
-                } else {
-                    menuItem.setIcon(this.failedIcon);
-                    checkFailed = true;
-                }
-
-                menuItem.addActionListener((e) -> {
-                    File base = getRootDirectory();
-                    if (base == null) {
-                        return;
-                    }
-                    Path p = s.resolveToPath(base.toPath());
-                    if (!Files.exists(p)) {
-                        showFileNotFoundMessage(p.toString(), true);
-                        return;
-                    }
-                    try {
-                        Desktop.getDesktop().open(p.toFile());
-                    } catch (IOException | UnsupportedOperationException ex) {
-                        Toolkit.getDefaultToolkit().beep();
-                        LOGGER.log(Level.WARNING, "failed to open: " + p.toString(), ex);
-                    }
-                });
-
-                this.existsSystemMenu.add(menuItem);
+        this.existsSystemMenu.removeAll();
+        PhantomPath[] selected = getSelectedPaths();
+        boolean checkFailed = false;
+        int existsConfirmed = 0;
+        for (PhantomPath s : selected) {
+            boolean exists = false;
+            if (this.rootDirectory != null) {
+                Path p = s.resolveToPath(this.rootDirectory.toPath());
+                exists = Files.exists(p);
             }
-            this.existsSystemMenu.setText("Exists (" + existsConfirmed + "/" + selected.length + ")");
-            if (checkFailed) {
-                this.existsSystemMenu.setIcon(this.failedIcon);
+
+            String name = this.fileSystem.toRealPath(s).getName();
+            if (name == null) {
+                name = "(root)";
+            }
+            JMenuItem menuItem = new JMenuItem(name);
+            if (exists) {
+                menuItem.setIcon(this.okIcon);
+                existsConfirmed++;
             } else {
-                this.existsSystemMenu.setIcon(this.okIcon);
+                menuItem.setIcon(this.failedIcon);
+                checkFailed = true;
             }
+
+            menuItem.addActionListener((e) -> {
+                File base = getRootDirectory();
+                if (base == null) {
+                    return;
+                }
+                Path p = s.resolveToPath(base.toPath());
+                if (!Files.exists(p)) {
+                    showFileNotFoundMessage(p.toString(), true);
+                    return;
+                }
+                try {
+                    Desktop.getDesktop().open(p.toFile());
+                } catch (IOException | UnsupportedOperationException ex) {
+                    Toolkit.getDefaultToolkit().beep();
+                    LOGGER.log(Level.WARNING, "failed to open: " + p.toString(), ex);
+                }
+            });
+
+            this.existsSystemMenu.add(menuItem);
+        }
+        this.existsSystemMenu.setText("Exists (" + existsConfirmed + "/" + selected.length + ")");
+        if (checkFailed) {
+            this.existsSystemMenu.setIcon(this.failedIcon);
+        } else {
+            this.existsSystemMenu.setIcon(this.okIcon);
         }
 
-        {
-            this.openLocationButton.setEnabled(
-                    this.searchModeEnabled && this.fileTableList.getSelectedRowCount() == 1
-            );
-        }
+        this.openLocationButton.setEnabled(
+                this.searchModeEnabled && this.fileTableList.getSelectedRowCount() == 1
+        );
     }//GEN-LAST:event_filePopupMenuPopupMenuWillBecomeVisible
 
     private void openDirectoryButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openDirectoryButtonActionPerformed
@@ -1068,6 +1025,11 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void showEntryProperties(FileEntry[] entries) {
         EntryProperties properties = new EntryProperties(entries, this, false);
+
+        if (!(entries.length == 1 && entries[0].getPath().isRoot())) {
+            properties.removeMetadataPanel();
+        }
+
         properties.setLocationRelativeTo(this);
         properties.setVisible(true);
     }
@@ -1093,15 +1055,15 @@ public class MainWindow extends javax.swing.JFrame {
             this.searchModeEnabled = false;
             onSearchDisabled();
         }
-        
+
         if (addToReturnList) {
             this.backButton.setEnabled(true);
             this.returnList.add(this.currentPath);
-            
+
             this.forwardButton.setEnabled(false);
             this.nextList.clear();
         }
-        
+
         this.currentPath = this.fileSystem.toRealPath(newPath);
         this.pathField.setText(this.currentPath.toString());
 
@@ -1168,11 +1130,7 @@ public class MainWindow extends javax.swing.JFrame {
             Toolkit.getDefaultToolkit().beep();
             return;
         }
-        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new FileTransferable(Arrays.asList(selected)), new ClipboardOwner() {
-            @Override
-            public void lostOwnership(Clipboard clipboard, Transferable contents) {
-
-            }
+        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new FileTransferable(Arrays.asList(selected)), (Clipboard clipboard, Transferable contents) -> {
         });
     }//GEN-LAST:event_copySystemButtonActionPerformed
 
@@ -1361,10 +1319,10 @@ public class MainWindow extends javax.swing.JFrame {
         if (this.returnList.isEmpty()) {
             this.backButton.setEnabled(false);
         }
-        
+
         this.forwardButton.setEnabled(true);
         this.nextList.add(0, this.currentPath);
-        
+
         updateCurrentPath(lastPath, false);
     }//GEN-LAST:event_backButtonActionPerformed
 
@@ -1374,10 +1332,10 @@ public class MainWindow extends javax.swing.JFrame {
         if (this.nextList.isEmpty()) {
             this.forwardButton.setEnabled(false);
         }
-        
+
         this.backButton.setEnabled(true);
         this.returnList.add(this.currentPath);
-        
+
         updateCurrentPath(nextPath, false);
     }//GEN-LAST:event_forwardButtonActionPerformed
 

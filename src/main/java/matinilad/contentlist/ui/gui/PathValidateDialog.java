@@ -31,42 +31,52 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HexFormat;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.SwingUtilities;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.entry.FileEntryType;
+import matinilad.contentlist.phantomfs.entry.FileEntryValidator;
 import matinilad.contentlist.phantomfs.entry.FileEntryValidatorReason;
+import matinilad.contentlist.phantomfs.entry.FileEntryValidatorResult;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
+ * TODO: Replace by StatusDialog
  *
  * @author Cien
  */
 @SuppressWarnings("serial")
-public class PathValidateDialog extends javax.swing.JDialog implements FileEntry.ValidationCallbacks {
-    
-    private static final AtomicLong instances = new AtomicLong(0);
-    
-    private final long instance = instances.getAndIncrement();
-    
+public class PathValidateDialog extends javax.swing.JDialog {
+
+    private static final Logger LOGGER = Logger.getLogger(PathValidateDialog.class.getName());
+
     private final Thread thread;
     private final FileEntry[] entries;
-    private final Path baseDirectory;
+    private final Path rootDirectory;
+
+    private FileEntry entry = null;
+    private Path path = null;
+    private boolean currentEntryRefused = false;
+    private long initialTime = System.currentTimeMillis();
+    private long size = 0;
+    private int accepted = 0;
+    private int refused = 0;
 
     /**
      * Creates new form Validate
      */
     public PathValidateDialog(
-            FileEntry[] entries, Path baseDirectory,
+            FileEntry[] entries, Path rootDirectory,
             java.awt.Frame parent, boolean modal
     ) {
         super(parent, modal);
         initComponents();
         Objects.requireNonNull(entries, "entries is null");
-        Objects.requireNonNull(baseDirectory, "baseDirectory is null");
+        Objects.requireNonNull(rootDirectory, "rootDirectory is null");
         this.entries = entries;
-        this.baseDirectory = baseDirectory;
-        
+        this.rootDirectory = rootDirectory;
+
         this.thread = new Thread(() -> {
             try {
                 run();
@@ -270,21 +280,37 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void log(int level, String text) {
-        if (getParent() instanceof MainWindow w) {
-            String[] lines = text.lines().toArray(String[]::new);
-            for (String line : lines) {
-                w.println(level, "V" + this.instance + " " + line);
-            }
-        }
-    }
-    
     private void run() throws Throwable {
         SwingUtilities.invokeLater(() -> {
-            log(MainWindow.INFO_LEVEL, "Running");
+            LOGGER.info("Running");
         });
         for (FileEntry e : this.entries) {
-            e.validate(this.baseDirectory, this);
+            FileEntryValidator validator = new FileEntryValidator(rootDirectory, e) {
+                @Override
+                public boolean onShouldInterrupt() throws IOException, InterruptedException {
+                    return Thread.interrupted();
+                }
+
+                @Override
+                public void onProgressUpdate(long bytes) throws IOException, InterruptedException {
+                    progressUpdate(bytes);
+                }
+
+                @Override
+                public void onEntryAccepted(FileEntryValidatorReason reason) throws IOException, InterruptedException {
+                    accepted(reason);
+                    if (reason == FileEntryValidatorReason.SIZE) {
+                        setSize(getEntry().getSize());
+                    }
+                }
+            };
+            setEntry(validator.getEntry());
+            setPath(validator.getPath());
+
+            FileEntryValidatorResult result = validator.validate();
+            if (!result.success()) {
+                refused(result.getReason(), result.getFoundValue());
+            }
             entryFinish();
         }
         SwingUtilities.invokeLater(() -> {
@@ -293,7 +319,7 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
             } else {
                 setTitle("Done");
             }
-            log(MainWindow.INFO_LEVEL, "Done");
+            LOGGER.info("Done");
         });
     }
 
@@ -327,15 +353,15 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
         this.sampleCheckBox.setSelected(false);
         this.hashCheckBox.setSelected(false);
         this.entriesStatus.setText("");
-        
+
         this.thread.start();
-        log(MainWindow.INFO_LEVEL, "Processing thread initiated");
+        LOGGER.info("Processing thread initiated");
     }//GEN-LAST:event_formWindowOpened
 
     private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelButtonActionPerformed
         if (this.thread.isAlive()) {
             setTitle("Canceled");
-            log(MainWindow.INFO_LEVEL, "Canceled");
+            LOGGER.info("Canceled");
             this.thread.interrupt();
         } else {
             this.cancelButton.setEnabled(false);
@@ -344,27 +370,10 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
 
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
         if (this.thread.isAlive()) {
-            log(MainWindow.INFO_LEVEL, "Canceled");
+            LOGGER.info("Canceled");
             this.thread.interrupt();
         }
     }//GEN-LAST:event_formWindowClosed
-
-    // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton cancelButton;
-    private javax.swing.JTextArea currentEntry;
-    private javax.swing.JLabel currentFile;
-    private javax.swing.JProgressBar currentFileProgressBar;
-    private javax.swing.JLabel currentFileStatus;
-    private javax.swing.JLabel entriesStatus;
-    private javax.swing.JCheckBox existsCheckBox;
-    private javax.swing.JCheckBox hashCheckBox;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
-    private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JCheckBox sampleCheckBox;
-    private javax.swing.JCheckBox sizeCheckBox;
-    private javax.swing.JCheckBox typeCheckBox;
-    // End of variables declaration//GEN-END:variables
 
     private void onException(Throwable t) {
         if (t == null || t instanceof InterruptedException) {
@@ -372,27 +381,17 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
         }
         setTitle("Error!");
         Toolkit.getDefaultToolkit().beep();
-        log(MainWindow.ERROR_LEVEL, "Fatal error!");
-        log(MainWindow.ERROR_LEVEL, UIUtils.stacktraceOf(t));
+        LOGGER.log(Level.SEVERE, "Fatal Error!", t);
     }
-    
-    private FileEntry entry = null;
-    private Path path = null;
-    private boolean currentEntryRefused = false;
-    private long initialTime = System.currentTimeMillis();
-    private long size = 0;
-    private int accepted = 0;
-    private int refused = 0;
-    
-    @Override
-    public void setEntry(FileEntry entry) throws IOException, InterruptedException {
+
+    private void setEntry(FileEntry entry) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             this.entry = entry;
             this.path = null;
             this.currentEntryRefused = false;
             this.initialTime = System.currentTimeMillis();
             this.size = 0;
-            
+
             StringBuilder b = new StringBuilder();
             b.append(entry.getPath().toString()).append("\n");
             b.append("Type: ").append(entry.getType()).append("\n");
@@ -415,38 +414,35 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
             }
             this.currentEntry.setText(b.toString());
             this.currentFile.setText("");
-            
+
             this.existsCheckBox.setSelected(false);
             this.typeCheckBox.setSelected(false);
             this.sizeCheckBox.setSelected(false);
             this.sampleCheckBox.setSelected(false);
             this.hashCheckBox.setSelected(false);
-            
+
             this.currentFileProgressBar.setValue(0);
             this.currentFileStatus.setText("");
-            
+
             this.currentEntryRefused = false;
             this.initialTime = System.currentTimeMillis();
         });
     }
-    
-    @Override
-    public void setPath(Path path) throws IOException, InterruptedException {
+
+    private void setPath(Path path) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             this.path = path;
             this.currentFile.setText(path.toString());
         });
     }
-    
-    @Override
-    public void setSize(long size) throws IOException, InterruptedException {
+
+    private void setSize(long size) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             this.size = size;
         });
     }
-    
-    @Override
-    public void progressUpdate(long bytes) throws IOException, InterruptedException {
+
+    private void progressUpdate(long bytes) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             if (bytes != 0) {
                 this.currentFileProgressBar.setValue((int) ((((double) bytes) / this.size) * 100));
@@ -461,9 +457,8 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
             this.currentFileStatus.setText(UIUtils.formatPercentage(bytes, this.size) + " - " + UIUtils.formatBytes(bytes) + " out of " + UIUtils.formatBytes(this.size) + " - " + UIUtils.formatSpeed(averageSpeed));
         });
     }
-    
-    @Override
-    public void accepted(FileEntryValidatorReason reason) throws IOException, InterruptedException {
+
+    private void accepted(FileEntryValidatorReason reason) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             switch (reason) {
                 case EXISTENCE -> {
@@ -484,41 +479,40 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
             }
         });
     }
-    
-    @Override
-    public void refused(FileEntryValidatorReason reason, Object foundValue) throws IOException, InterruptedException {
+
+    private void refused(FileEntryValidatorReason reason, Object foundValue) throws IOException, InterruptedException {
         SwingUtilities.invokeLater(() -> {
             HexFormat hex = HexFormat.of();
-            
-            log(MainWindow.WARN_LEVEL, "WARNING!");
-            log(MainWindow.WARN_LEVEL, "Refused: " + this.entry.getPath().toString());
-            log(MainWindow.WARN_LEVEL, "Real Path: " + this.path.toString());
+
+            LOGGER.warning("WARNING!");
+            LOGGER.log(Level.WARNING, "Refused: {0}", this.entry.getPath().toString());
+            LOGGER.log(Level.WARNING, "Real Path: {0}", this.path.toString());
             switch (reason) {
                 case EXISTENCE -> {
-                    log(MainWindow.WARN_LEVEL, "Reason: Does not exists!");
+                    LOGGER.warning("Reason: Does not exists!");
                 }
                 case TYPE -> {
-                    log(MainWindow.WARN_LEVEL, "Reason: Expected type " + this.entry.getType() + ", found " + foundValue);
+                    LOGGER.log(Level.WARNING, "Reason: Expected type {0}, found {1}", new Object[]{this.entry.getType(), foundValue});
                 }
                 case SIZE -> {
-                    log(MainWindow.WARN_LEVEL, "Reason: Wrong Size! Expected " + UIUtils.formatBytes(this.entry.getSize()) + "; found " + UIUtils.formatBytes((long) foundValue));
+                    LOGGER.log(Level.WARNING, "Reason: Wrong Size! Expected {0}; found {1}", new Object[]{UIUtils.formatBytes(this.entry.getSize()), UIUtils.formatBytes((long) foundValue)});
                 }
                 case SAMPLE -> {
-                    log(MainWindow.WARN_LEVEL, "Reason: Wrong sample!");
-                    log(MainWindow.WARN_LEVEL, " Expected: " + hex.formatHex(this.entry.getSample()));
-                    log(MainWindow.WARN_LEVEL, "    Found: " + hex.formatHex((byte[]) foundValue));
+                    LOGGER.warning("Reason: Wrong sample!");
+                    LOGGER.log(Level.WARNING, " Expected: {0}", hex.formatHex(this.entry.getSample()));
+                    LOGGER.log(Level.WARNING, "    Found: {0}", hex.formatHex((byte[]) foundValue));
                 }
                 case HASH -> {
-                    log(MainWindow.WARN_LEVEL, "Reason: Wrong hash!");
-                    log(MainWindow.WARN_LEVEL, " Expected: " + hex.formatHex(this.entry.getSha256()));
-                    log(MainWindow.WARN_LEVEL, "    Found: " + hex.formatHex((byte[]) foundValue));
+                    LOGGER.warning("Reason: Wrong hash!");
+                    LOGGER.log(Level.WARNING, " Expected: {0}", hex.formatHex(this.entry.getSha256()));
+                    LOGGER.log(Level.WARNING, "    Found: {0}", hex.formatHex((byte[]) foundValue));
                 }
             }
             this.currentEntryRefused = true;
         });
     }
     
-    public void entryFinish() {
+    private void entryFinish() {
         SwingUtilities.invokeLater(() -> {
             if (this.currentEntryRefused) {
                 this.refused++;
@@ -530,4 +524,22 @@ public class PathValidateDialog extends javax.swing.JDialog implements FileEntry
             this.entriesStatus.setText(this.accepted + " Accepted, " + this.refused + " Refused, " + processed + " Processed, " + left + " Left.");
         });
     }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton cancelButton;
+    private javax.swing.JTextArea currentEntry;
+    private javax.swing.JLabel currentFile;
+    private javax.swing.JProgressBar currentFileProgressBar;
+    private javax.swing.JLabel currentFileStatus;
+    private javax.swing.JLabel entriesStatus;
+    private javax.swing.JCheckBox existsCheckBox;
+    private javax.swing.JCheckBox hashCheckBox;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JCheckBox sampleCheckBox;
+    private javax.swing.JCheckBox sizeCheckBox;
+    private javax.swing.JCheckBox typeCheckBox;
+    // End of variables declaration//GEN-END:variables
+
 }

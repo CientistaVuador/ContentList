@@ -23,7 +23,6 @@ public class GUInterface {
         
         FlatDarkLaf.setup();
         
-        //new MainMenu().setVisible(true);
         new MainWindow().setVisible(true);
     }
     

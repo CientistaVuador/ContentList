@@ -1,12 +1,8 @@
 package matinilad.contentlist.phantomfs;
 
-import java.io.BufferedOutputStream;
 import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -15,85 +11,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import matinilad.contentlist.phantomfs.entry.FileEntryCreator;
-import matinilad.contentlist.phantomfs.entry.FileEntryWriter;
 
 /**
  *
  * @author Cien
  */
 public abstract class PhantomCreator {
-
-    @Deprecated
-    public static interface ContentListCallbacks {
-
-        public void onStart() throws IOException, InterruptedException;
-
-        public void onFileUnreadable(Path path) throws IOException, InterruptedException;
-
-        public void onFileDuplicated(Path path) throws IOException, InterruptedException;
-
-        public void onEntryStart(PhantomPath path) throws IOException, InterruptedException;
-
-        public void onEntryFinish(FileEntry entry) throws IOException, InterruptedException;
-
-        public void onEntryProgressUpdate(long current, long total) throws IOException, InterruptedException;
-
-        public void onFinish() throws IOException;
-
-    }
-
-    @Deprecated
-    public static void create(
-            OutputStream output, ContentListCallbacks callbacks, Path... paths
-    ) throws IOException, InterruptedException {
-        if (callbacks != null) {
-            callbacks.onStart();
-        }
-        
-        try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(new BufferedOutputStream(output), StandardCharsets.UTF_8), 0)) {
-            PhantomCreator creator = new PhantomCreator() {
-                @Override
-                protected void onFileRejected(Path file, IOException reason) throws IOException, InterruptedException {
-                    if (callbacks != null) {
-                        if ("file is duplicated".equals(reason.getMessage())) {
-                            callbacks.onFileDuplicated(file);
-                        } else {
-                            callbacks.onFileUnreadable(file);
-                        }
-                    }
-                }
-                
-                @Override
-                protected void onEntry(FileEntry entry) throws IOException, InterruptedException {
-                    if (callbacks != null) {
-                        callbacks.onEntryFinish(entry);
-                    }
-                    writer.writeFileEntry(entry);
-                }
-            };
-            creator.setFileEntryCreator(new FileEntryCreator() {
-                @Override
-                protected void onEntryCreated(FileEntry entry) throws IOException, InterruptedException {
-                    if (callbacks != null) {
-                        callbacks.onEntryStart(entry.getPath());
-                        callbacks.onEntryProgressUpdate(0, 0);
-                    }
-                }
-                
-                @Override
-                protected void onEntryProgress(FileEntry entry, long bytes) throws IOException, InterruptedException {
-                    if (callbacks != null) {
-                        callbacks.onEntryProgressUpdate(bytes, entry.getSize());
-                    }
-                }
-            });
-            creator.create(paths);
-        }
-        
-        if (callbacks != null) {
-            callbacks.onFinish();
-        }
-    }
     
     private FileEntryCreator fileEntryCreator = new FileEntryCreator();
 
@@ -171,18 +94,21 @@ public abstract class PhantomCreator {
             onShouldFileBeRejected(file);
             
             FileEntry entry = getFileEntryCreator().create(file, depth);
-
+            
             if (entry.getType().equals(FileEntryType.DIRECTORY)) {
                 parent.setDirectories(parent.getDirectories() + 1);
             } else {
                 parent.setFiles(parent.getFiles() + 1);
             }
-
+            
             if (entry.getType().equals(FileEntryType.DIRECTORY)) {
                 List<Path> children = sort(Files.list(file).toList());
                 for (Path child : children) {
                     createRecursively(entry, child, depth - 1);
                 }
+                
+                parent.setDirectories(parent.getDirectories() + entry.getDirectories());
+                parent.setFiles(parent.getFiles() + entry.getFiles());
             }
             
             parent.setSize(parent.getSize() + entry.getSize());

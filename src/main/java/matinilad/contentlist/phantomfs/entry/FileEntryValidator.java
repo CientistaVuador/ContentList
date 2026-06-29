@@ -53,7 +53,6 @@ public class FileEntryValidator {
         this.rootDirectory = Objects.requireNonNull(rootDirectory, "rootDirectory is null");
         this.entry = Objects.requireNonNull(entry, "entry is null");
         
-        //resolve the entry path to the root directory
         this.path = this.entry.getPath().resolveToPath(this.rootDirectory);
     }
     

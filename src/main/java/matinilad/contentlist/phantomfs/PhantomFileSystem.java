@@ -26,10 +26,6 @@
  */
 package matinilad.contentlist.phantomfs;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -41,7 +37,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
-import matinilad.contentlist.phantomfs.entry.FileEntryReader;
 import matinilad.contentlist.phantomfs.entry.FileEntryType;
 
 /**
@@ -49,16 +44,6 @@ import matinilad.contentlist.phantomfs.entry.FileEntryType;
  * @author Cien
  */
 public class PhantomFileSystem {
-
-    @Deprecated
-    public static PhantomFileSystem of(File file, FileEntryReader.ContentListAccessCallbacks callbacks) throws FileNotFoundException, IOException, InterruptedException {
-        return new PhantomFileSystem(new RandomAccessFile(file, "r"), callbacks);
-    }
-
-    @Deprecated
-    public static PhantomFileSystem of(File file) throws FileNotFoundException, IOException, InterruptedException {
-        return of(file, null);
-    }
     
     private static class InternalFile {
 
@@ -78,48 +63,6 @@ public class PhantomFileSystem {
         root.name = "";
         root.children.put("..", root.parent);
         root.children.put(".", root);
-    }
-    
-    @Deprecated
-    private FileEntryReader access;
-    
-    @Deprecated
-    public PhantomFileSystem(RandomAccessFile file, FileEntryReader.ContentListAccessCallbacks callbacks) throws FileNotFoundException, IOException, InterruptedException {
-        Objects.requireNonNull(file, "file is null");
-        this.access = new FileEntryReader(file, new FileEntryReader.ContentListAccessCallbacks() {
-            @Override
-            public void onStart() throws IOException, InterruptedException {
-                if (callbacks != null) {
-                    callbacks.onStart();
-                }
-            }
-
-            @Override
-            public void onReadProgressUpdate(long current, long total) throws IOException, InterruptedException {
-                if (callbacks != null) {
-                    callbacks.onReadProgressUpdate(current, total);
-                }
-            }
-
-            private void entryRead(FileEntry entry, int index) throws IOException {
-                writeEntryImpl(entry);
-            }
-            
-            @Override
-            public void onContentEntryRead(FileEntry entry, int index) throws IOException, InterruptedException {
-                entryRead(entry, index);
-                if (callbacks != null) {
-                    callbacks.onContentEntryRead(entry, index);
-                }
-            }
-
-            @Override
-            public void onFinish() throws IOException, InterruptedException {
-                if (callbacks != null) {
-                    callbacks.onFinish();
-                }
-            }
-        });
     }
     
     public PhantomFileSystem() {
@@ -462,11 +405,6 @@ public class PhantomFileSystem {
             return null;
         }
         return resolved.entry;
-    }
-    
-    @Deprecated
-    public FileEntryReader getAccess() {
-        return access;
     }
     
 }

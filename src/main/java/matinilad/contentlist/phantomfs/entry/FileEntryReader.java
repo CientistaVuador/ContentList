@@ -28,10 +28,7 @@ package matinilad.contentlist.phantomfs.entry;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.RandomAccessFile;
-import java.nio.charset.StandardCharsets;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HexFormat;
@@ -45,20 +42,8 @@ import matinilad.contentlist.phantomfs.PhantomPath;
  * @author Cien
  */
 public class FileEntryReader implements Closeable {
-
-    @Deprecated
-    public static interface ContentListAccessCallbacks {
-
-        public void onStart() throws IOException, InterruptedException;
-
-        public void onReadProgressUpdate(long current, long total) throws IOException, InterruptedException;
-
-        public void onContentEntryRead(FileEntry entry, int index) throws IOException, InterruptedException;
-
-        public void onFinish() throws IOException, InterruptedException;
-    }
-
-    private final InputStreamReader in;
+    
+    private final Reader in;
 
     private int peekChar = -1;
     private boolean hasPeek = false;
@@ -75,107 +60,12 @@ public class FileEntryReader implements Closeable {
     private int sha256Index;
     private int sampleIndex;
     private int metaIndex;
-
-    @Deprecated
-    private RandomAccessFile file = null;
-    @Deprecated
-    private FileEntry[] entries = null;
-
-    public FileEntryReader(InputStreamReader in) {
+    
+    public FileEntryReader(Reader in) {
         Objects.requireNonNull(in, "in is null");
         this.in = in;
     }
-
-    @Deprecated
-    public FileEntryReader(RandomAccessFile file, FileEntryReader.ContentListAccessCallbacks callbacks) throws IOException, InterruptedException {
-        Objects.requireNonNull(file, "file is null");
-        this.file = file;
-
-        if (callbacks != null) {
-            callbacks.onStart();
-            callbacks.onReadProgressUpdate(0, file.length());
-        }
-
-        file.seek(0);
-        FileEntryReader reader = new FileEntryReader(new InputStreamReader(new InputStream() {
-            long count = 0;
-
-            @Override
-            public int read() throws IOException {
-                if (Thread.interrupted()) {
-                    throw new RuntimeException(new InterruptedException());
-                }
-
-                int r = file.read();
-                if (r != -1) {
-                    this.count++;
-                    if (callbacks != null) {
-                        try {
-                            callbacks.onReadProgressUpdate(count, file.length());
-                        } catch (InterruptedException ex) {
-                            throw new RuntimeException(ex);
-                        }
-                    }
-                }
-                return r;
-            }
-
-            @Override
-            public int read(byte[] b, int off, int len) throws IOException {
-                if (Thread.interrupted()) {
-                    throw new RuntimeException(new InterruptedException());
-                }
-
-                int r = file.read(b, off, len);
-                if (r != -1) {
-                    this.count += r;
-                    if (callbacks != null) {
-                        try {
-                            callbacks.onReadProgressUpdate(this.count, file.length());
-                        } catch (InterruptedException ex) {
-                            throw new RuntimeException(ex);
-                        }
-                    }
-                }
-                return r;
-            }
-        }, StandardCharsets.UTF_8));
-
-        try {
-            List<FileEntry> list = new ArrayList<>();
-            FileEntry entry;
-            while ((entry = reader.readEntry()) != null) {
-                if (callbacks != null) {
-                    callbacks.onContentEntryRead(entry, list.size());
-                }
-                list.add(entry);
-            }
-            this.entries = list.toArray(FileEntry[]::new);
-        } catch (RuntimeException ex) {
-            if (ex.getCause() instanceof InterruptedException e) {
-                throw e;
-            }
-            throw ex;
-        }
-        
-        if (callbacks != null) {
-            callbacks.onFinish();
-        }
-
-        file.seek(0);
-        this.in = new InputStreamReader(new InputStream() {
-            @Override
-            public int read() throws IOException {
-                return file.read();
-            }
-
-            @Override
-            public int read(byte[] b, int off, int len) throws IOException {
-                return file.read(b, off, len);
-            }
-        }, StandardCharsets.UTF_8);
-    }
-
+    
     private int getHeaderIndex(Map<String, Integer> map, String name) {
         Integer i = map.get(name);
         if (i == null) {
@@ -191,59 +81,6 @@ public class FileEntryReader implements Closeable {
         return record[index];
     }
     
-    private void parseMeta(FileEntry entry, String data) {
-        StringBuilder b = new StringBuilder();
-        String key = null;
-        
-        boolean quotes = false;
-        for (int i = 0; i < data.length(); i++) {
-            char c = data.charAt(i);
-            
-            if (quotes) {
-                if (c == '\'') {
-                    char peek = '\0';
-                    if ((i + 1) < data.length()) {
-                        peek = data.charAt(i + 1);
-                    }
-                    if (peek != '\'') {
-                        quotes = false;
-                        continue;
-                    }
-                    i++;
-                }
-                b.append(c);
-                continue;
-            }
-            
-            if (c == '\'') {
-                quotes = true;
-                continue;
-            }
-            
-            if (Character.isWhitespace(c)) {
-                continue;
-            }
-            
-            if (c == '=') {
-                key = b.toString();
-                b.setLength(0);
-                continue;
-            }
-            
-            if (c == ';' && key != null) {
-                entry.setMetadata(key, b.toString());
-                b.setLength(0);
-                key = null;
-                continue;
-            }
-            
-            b.append(c);
-        }
-        if (key != null) {
-            entry.setMetadata(key, b.toString());
-        }
-    }
-
     public FileEntry readEntry() throws IOException, IllegalArgumentException, NumberFormatException {
         if (this.endOfFileFound) {
             return null;
@@ -344,7 +181,7 @@ public class FileEntryReader implements Closeable {
         String metadata = getFieldFromRecord(record, this.metaIndex);
         
         if (metadata != null && !metadata.isEmpty()) {
-            parseMeta(entry, metadata);
+            entry.getMetadata().load(metadata);
         }
         
         return entry;
@@ -435,21 +272,6 @@ public class FileEntryReader implements Closeable {
         }
 
         return fields.toArray(String[]::new);
-    }
-
-    @Deprecated
-    public RandomAccessFile getFile() {
-        return file;
-    }
-
-    @Deprecated
-    public int getNumberOfEntries() {
-        return this.entries.length;
-    }
-
-    @Deprecated
-    public FileEntry getEntry(int index) {
-        return this.entries[index];
     }
     
     @Override

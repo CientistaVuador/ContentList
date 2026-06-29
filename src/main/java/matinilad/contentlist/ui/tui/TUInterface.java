@@ -1,9 +1,11 @@
 package matinilad.contentlist.ui.tui;
 
-import java.io.FileNotFoundException;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -12,11 +14,10 @@ import java.util.HexFormat;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Scanner;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.PhantomFileSystem;
 import matinilad.contentlist.phantomfs.PhantomPath;
+import matinilad.contentlist.phantomfs.entry.FileEntryReader;
 import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.ui.UIUtils;
 
@@ -82,10 +83,15 @@ public class TUInterface {
 
         out.println("Loading...");
 
-        PhantomFileSystem fs;
+        PhantomFileSystem fs = new PhantomFileSystem();
         try {
-            fs = PhantomFileSystem.of(inputPath.toFile());
-        } catch (IOException | InterruptedException ex) {
+            try (FileEntryReader reader = new FileEntryReader(new BufferedReader(new InputStreamReader(Files.newInputStream(inputPath), StandardCharsets.UTF_8)))) {
+                FileEntry entry;
+                while ((entry = reader.readEntry()) != null) {
+                    fs.writeEntry(entry);
+                }
+            }
+        } catch (IOException ex) {
             out.println("Failed to load input file!");
             out.println(ex.getLocalizedMessage());
             ex.printStackTrace(out);

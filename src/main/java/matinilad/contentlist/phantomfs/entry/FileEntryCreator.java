@@ -45,7 +45,7 @@ import matinilad.contentlist.phantomfs.PhantomPath;
 public class FileEntryCreator {
     
     private boolean sha256Enabled = true;
-    private int sampleSize = 24;
+    private int sampleSize = 32;
 
     public FileEntryCreator() {
 
@@ -58,11 +58,11 @@ public class FileEntryCreator {
     public void setSha256Enabled(boolean sha256Enabled) {
         this.sha256Enabled = sha256Enabled;
     }
-
+    
     public int getSampleSize() {
         return sampleSize;
     }
-
+    
     public void setSampleSize(int sampleSize) {
         if (sampleSize < 0) {
             throw new IllegalArgumentException("sample size is negative");

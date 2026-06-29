@@ -55,6 +55,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import matinilad.contentlist.phantomfs.PhantomCreator;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.entry.FileEntryCreator;
+import matinilad.contentlist.phantomfs.entry.FileEntryMetadata;
 import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.phantomfs.entry.FileEntryWriter;
 import matinilad.contentlist.ui.UIUtils;
@@ -64,14 +65,14 @@ import matinilad.contentlist.ui.UIUtils;
  * @author Cien
  */
 @SuppressWarnings("serial")
-public class NewCreateDialog extends javax.swing.JDialog {
+public class NewDialog extends javax.swing.JDialog {
 
-    private static final Logger LOGGER = Logger.getLogger(NewCreateDialog.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(NewDialog.class.getName());
 
     /**
      * Creates new form NewCreateDialog
      */
-    public NewCreateDialog(java.awt.Frame parent, boolean modal) {
+    public NewDialog(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
         setLocationRelativeTo(parent);
@@ -97,6 +98,13 @@ public class NewCreateDialog extends javax.swing.JDialog {
         inputListRemoveButton = new javax.swing.JButton();
         inputFilesClearButton = new javax.swing.JButton();
         inputListItemCount = new javax.swing.JLabel();
+        jPanel2 = new javax.swing.JPanel();
+        noFilesAndDirectoriesButton = new javax.swing.JCheckBox();
+        noSha256Button = new javax.swing.JCheckBox();
+        noFileSampleButton = new javax.swing.JCheckBox();
+        noMetadataButton = new javax.swing.JCheckBox();
+        fileSampleSizeSpinner = new javax.swing.JSpinner();
+        fileSampleSizeLabel = new javax.swing.JLabel();
         jPanel5 = new javax.swing.JPanel();
         metadataNameField = new javax.swing.JTextField();
         jLabel2 = new javax.swing.JLabel();
@@ -105,9 +113,7 @@ public class NewCreateDialog extends javax.swing.JDialog {
         jLabel4 = new javax.swing.JLabel();
         jScrollPane3 = new javax.swing.JScrollPane();
         metadataDescriptionArea = new javax.swing.JTextArea();
-        jMenuBar1 = new javax.swing.JMenuBar();
-        jMenu2 = new javax.swing.JMenu();
-        jMenuItem1 = new javax.swing.JMenuItem();
+        setUsernameToAuthorButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("New");
@@ -160,12 +166,12 @@ public class NewCreateDialog extends javax.swing.JDialog {
         this.inputList.getModel().addListDataListener(new ListDataListener() {
             @Override
             public void intervalAdded(ListDataEvent e) {
-                NewCreateDialog.this.onListDataChanged(e);
+                NewDialog.this.onListDataChanged(e);
             }
 
             @Override
             public void intervalRemoved(ListDataEvent e) {
-                NewCreateDialog.this.onListDataChanged(e);
+                NewDialog.this.onListDataChanged(e);
             }
 
             @Override
@@ -234,7 +240,7 @@ public class NewCreateDialog extends javax.swing.JDialog {
                         .addComponent(inputListAddButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(inputListRemoveButton)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 21, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 59, Short.MAX_VALUE)
                         .addComponent(inputFilesClearButton)))
                 .addGap(9, 9, 9)
                 .addComponent(inputListItemCount)
@@ -264,17 +270,74 @@ public class NewCreateDialog extends javax.swing.JDialog {
 
         jTabbedPane1.addTab("Files", jPanel1);
 
+        noFilesAndDirectoriesButton.setText("Don't Write Files and Directories Count");
+
+        noSha256Button.setText("Don't Write SHA256");
+
+        noFileSampleButton.setText("Don't Write a File Sample");
+        noFileSampleButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                noFileSampleButtonActionPerformed(evt);
+            }
+        });
+
+        noMetadataButton.setText("Don't Write Metadata");
+
+        fileSampleSizeSpinner.setModel(new javax.swing.SpinnerNumberModel(32, 0, 64, 1));
+
+        fileSampleSizeLabel.setText("File Sample Size:");
+
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(noFilesAndDirectoriesButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(noSha256Button, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(noFileSampleButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(noMetadataButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(fileSampleSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(fileSampleSizeLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(155, Short.MAX_VALUE))
+        );
+        jPanel2Layout.setVerticalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addGap(12, 12, 12)
+                .addComponent(noFilesAndDirectoriesButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(noSha256Button)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(noFileSampleButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(noMetadataButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(fileSampleSizeLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(fileSampleSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(122, Short.MAX_VALUE))
+        );
+
+        jTabbedPane1.addTab("Settings", jPanel2);
+
         jLabel2.setText("Name:");
 
         jLabel3.setText("Author:");
-
-        metadataAuthorField.setText(System.getProperty("user.name"));
 
         jLabel4.setText("Description:");
 
         metadataDescriptionArea.setColumns(20);
         metadataDescriptionArea.setRows(5);
         jScrollPane3.setViewportView(metadataDescriptionArea);
+
+        setUsernameToAuthorButton.setText("Username");
+        setUsernameToAuthorButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setUsernameToAuthorButtonActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
         jPanel5.setLayout(jPanel5Layout);
@@ -285,13 +348,16 @@ public class NewCreateDialog extends javax.swing.JDialog {
                 .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 376, Short.MAX_VALUE)
                     .addComponent(metadataNameField, javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(metadataAuthorField, javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel5Layout.createSequentialGroup()
-                        .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel2)
-                            .addComponent(jLabel3)
-                            .addComponent(jLabel4))
-                        .addGap(0, 0, Short.MAX_VALUE)))
+                        .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel4, javax.swing.GroupLayout.Alignment.LEADING))
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel5Layout.createSequentialGroup()
+                        .addComponent(metadataAuthorField)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(setUsernameToAuthorButton)))
                 .addContainerGap())
         );
         jPanel5Layout.setVerticalGroup(
@@ -304,25 +370,17 @@ public class NewCreateDialog extends javax.swing.JDialog {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jLabel3)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(metadataAuthorField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(12, 12, 12)
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(metadataAuthorField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(setUsernameToAuthorButton))
+                .addGap(11, 11, 11)
                 .addComponent(jLabel4)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 98, Short.MAX_VALUE)
+                .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 136, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
-        jTabbedPane1.addTab("Metadata", jPanel5);
-
-        jMenu2.setText("Edit");
-
-        jMenuItem1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/settings.png"))); // NOI18N
-        jMenuItem1.setText("Settings");
-        jMenu2.add(jMenuItem1);
-
-        jMenuBar1.add(jMenu2);
-
-        setJMenuBar(jMenuBar1);
+        jTabbedPane1.addTab("Info", jPanel5);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -454,13 +512,19 @@ public class NewCreateDialog extends javax.swing.JDialog {
         }
     }//GEN-LAST:event_inputListRemoveButtonActionPerformed
 
-    private void create(StatusDialog progressBar, File outputFile, List<File> inputFiles) throws IOException, InterruptedException {
+    private void create(
+            StatusDialog progressBar,
+            File outputFile,
+            List<File> inputFiles,
+            int flags, int sampleSize,
+            String name, String author, String description
+    ) throws IOException, InterruptedException {
         LOGGER.log(Level.INFO, "creating list on {0} for {1}",
                 new Object[] {
                     outputFile.toString(),
                     inputFiles.stream().map(File::toString).collect(Collectors.joining(File.pathSeparator))
                 });
-        try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(outputFile)), StandardCharsets.UTF_8), 0)) {
+        try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(outputFile)), StandardCharsets.UTF_8), flags)) {
             PhantomCreator creator = new PhantomCreator() {
                 private long entriesWritten = 0;
                 private long totalSize = 0;
@@ -504,6 +568,13 @@ public class NewCreateDialog extends javax.swing.JDialog {
                     SwingUtilities.invokeLater(() -> {
                         progressBar.updateAndResetTime(entry.getPath().toString());
                     });
+                    
+                    if (entry.getPath().isRoot()) {
+                        FileEntryMetadata metadata = entry.getMetadata();
+                        metadata.writeString(FileEntry.METADATA_NAME, name);
+                        metadata.writeString(FileEntry.METADATA_AUTHOR, author);
+                        metadata.writeString(FileEntry.METADATA_DESCRIPTION, description);
+                    }
                 }
 
                 @Override
@@ -523,8 +594,14 @@ public class NewCreateDialog extends javax.swing.JDialog {
                     }
                 }
             };
+            fileEntryCreator.setSha256Enabled((flags & FileEntryWriter.FLAG_NO_SHA256) == 0);
+            if ((flags & FileEntryWriter.FLAG_NO_SAMPLE) != 0) {
+                fileEntryCreator.setSampleSize(sampleSize);
+            } else {
+                fileEntryCreator.setSampleSize(0);
+            }
+            
             creator.setFileEntryCreator(fileEntryCreator);
-
             creator.create(inputFiles.stream().map(File::toPath).toArray(Path[]::new));
         }
     }
@@ -554,10 +631,32 @@ public class NewCreateDialog extends javax.swing.JDialog {
         StatusDialog dialog = new StatusDialog(this, true);
         dialog.setTitle(output.toString());
         LOGGER.addHandler(dialog.getLoggerHandler());
-
+        
+        int flags = 0;
+        
+        if (this.noFilesAndDirectoriesButton.isSelected()) {
+            flags |= FileEntryWriter.FLAG_NO_FILES_AND_DIRECTORIES;
+        }
+        if (this.noSha256Button.isSelected()) {
+            flags |= FileEntryWriter.FLAG_NO_SHA256;
+        }
+        if (this.noFileSampleButton.isSelected()) {
+            flags |= FileEntryWriter.FLAG_NO_SAMPLE;
+        }
+        if (this.noMetadataButton.isSelected()) {
+            flags |= FileEntryWriter.FLAG_NO_METADATA;
+        }
+        
+        int finalFlags = flags;
+        int sampleSize = (int) this.fileSampleSizeSpinner.getValue();
+        
+        String name = this.metadataNameField.getText();
+        String author = this.metadataAuthorField.getText();
+        String description = this.metadataDescriptionArea.getText();
+        
         Thread th = new Thread(() -> {
             try {
-                create(dialog, output, inputFiles);
+                create(dialog, output, inputFiles, finalFlags, sampleSize, name, author, description);
             } catch (InterruptedException e) {
                 LOGGER.log(Level.INFO, "interrupted by user", e);
                 if (!output.delete()) {
@@ -580,8 +679,8 @@ public class NewCreateDialog extends javax.swing.JDialog {
         dialog.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                NewCreateDialog.this.setVisible(false);
-                NewCreateDialog.this.dispose();
+                NewDialog.this.setVisible(false);
+                NewDialog.this.dispose();
             }
         });
         th.setDaemon(true);
@@ -590,8 +689,20 @@ public class NewCreateDialog extends javax.swing.JDialog {
         dialog.setVisible(true);
     }//GEN-LAST:event_createButtonActionPerformed
 
+    private void setUsernameToAuthorButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setUsernameToAuthorButtonActionPerformed
+        this.metadataAuthorField.setText(System.getProperty("user.name"));
+    }//GEN-LAST:event_setUsernameToAuthorButtonActionPerformed
+
+    private void noFileSampleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_noFileSampleButtonActionPerformed
+        boolean value = this.noFileSampleButton.isSelected();
+        this.fileSampleSizeLabel.setEnabled(!value);
+        this.fileSampleSizeSpinner.setEnabled(!value);
+    }//GEN-LAST:event_noFileSampleButtonActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton createButton;
+    private javax.swing.JLabel fileSampleSizeLabel;
+    private javax.swing.JSpinner fileSampleSizeSpinner;
     private javax.swing.JButton inputFilesClearButton;
     private javax.swing.JList<File> inputList;
     private javax.swing.JButton inputListAddButton;
@@ -600,10 +711,8 @@ public class NewCreateDialog extends javax.swing.JDialog {
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
-    private javax.swing.JMenu jMenu2;
-    private javax.swing.JMenuBar jMenuBar1;
-    private javax.swing.JMenuItem jMenuItem1;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel5;
@@ -613,7 +722,12 @@ public class NewCreateDialog extends javax.swing.JDialog {
     private javax.swing.JTextField metadataAuthorField;
     private javax.swing.JTextArea metadataDescriptionArea;
     private javax.swing.JTextField metadataNameField;
+    private javax.swing.JCheckBox noFileSampleButton;
+    private javax.swing.JCheckBox noFilesAndDirectoriesButton;
+    private javax.swing.JCheckBox noMetadataButton;
+    private javax.swing.JCheckBox noSha256Button;
     private javax.swing.JTextField outputFile;
     private javax.swing.JButton outputFileSelectButton;
+    private javax.swing.JButton setUsernameToAuthorButton;
     // End of variables declaration//GEN-END:variables
 }

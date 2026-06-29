@@ -26,19 +26,82 @@
  */
 package matinilad.contentlist.ui.gui;
 
+import java.awt.Toolkit;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.SwingUtilities;
+import matinilad.contentlist.phantomfs.entry.FileEntry;
+import matinilad.contentlist.phantomfs.PhantomFileSystem;
+import matinilad.contentlist.phantomfs.entry.FileEntryReader;
+import matinilad.contentlist.ui.UIUtils;
+
 /**
- *
+ * TODO: Replace by StatusDialog
  * @author Cien
  */
+@SuppressWarnings("serial")
 public class OpenDialog extends javax.swing.JDialog {
 
+    private static final Logger LOGGER = Logger.getLogger(OpenDialog.class.getName());
+
+    private final File file;
+    private final Thread thread;
+    
+    private long initialTime = System.currentTimeMillis();
+
     /**
-     * Creates new form Open
+     * Creates new form OpenFileSystemDialog
      */
-    public OpenDialog(java.awt.Frame parent, boolean modal) {
+    public OpenDialog(File file, java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
-        setLocationRelativeTo(null);
+        this.file = file;
+        this.thread = new Thread(() -> {
+            try {
+                onStart();
+                
+                FileTransferStatus fileTransfer = new FileTransferStatus() {
+                    @Override
+                    public void update(long count) {
+                        super.update(count);
+                        
+                        onReadProgressUpdate(count, getSize());
+                    }
+                };
+                fileTransfer.setSize(file.length());
+                StatusInputStream status = new StatusInputStream(fileTransfer, new FileInputStream(file));
+                
+                PhantomFileSystem fs = new PhantomFileSystem();
+                try (FileEntryReader reader = new FileEntryReader(new BufferedReader(new InputStreamReader(status, StandardCharsets.UTF_8)))) {
+                    FileEntry entry;
+                    while ((entry = reader.readEntry()) != null) {
+                        fs.writeEntry(entry);
+                        onEntryRead(entry);
+                    }
+                }
+                
+                onFinish();
+                
+                if (getParent() instanceof MainWindow w) {
+                    SwingUtilities.invokeLater(() -> {
+                        w.openFileSystem(fs);
+                    });
+                }
+            } catch (Throwable t) {
+                SwingUtilities.invokeLater(() -> {
+                    onException(t);
+                });
+            }
+            SwingUtilities.invokeLater(() -> {
+                setVisible(false);
+                dispose();
+            });
+        });
     }
 
     /**
@@ -48,23 +111,117 @@ public class OpenDialog extends javax.swing.JDialog {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        progressBar = new javax.swing.JProgressBar();
+        currentEntry = new javax.swing.JLabel();
+        progressLabel = new javax.swing.JLabel();
+
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        setTitle("Open");
+        setTitle("Opening");
+        setResizable(false);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosed(java.awt.event.WindowEvent evt) {
+                formWindowClosed(evt);
+            }
+            public void windowOpened(java.awt.event.WindowEvent evt) {
+                formWindowOpened(evt);
+            }
+        });
+
+        currentEntry.setText("/current/entry/file.txt");
+
+        progressLabel.setText("96.55% - 10TB 10GB 10MB 10KB 102 Bytes out of 10TB 10GB 10MB 12KB 150 Bytes - 150 MB/s");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 529, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(progressBar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(progressLabel)
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addComponent(currentEntry, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 440, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(currentEntry)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(progressBar, javax.swing.GroupLayout.PREFERRED_SIZE, 42, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(progressLabel)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void onException(Throwable t) {
+        if (!(t instanceof InterruptedException)) {
+            Toolkit.getDefaultToolkit().beep();
+            LOGGER.log(Level.SEVERE, "Failed to read file!", t);
+        } else {
+            LOGGER.log(Level.INFO, "Canceled");
+        }
+    }
     
+    private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
+        this.thread.interrupt();
+        LOGGER.log(Level.INFO, "Read window closed.");
+    }//GEN-LAST:event_formWindowClosed
+
+    private void formWindowOpened(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowOpened
+        this.currentEntry.setText("Starting...");
+        this.progressBar.setValue(0);
+        this.progressLabel.setText("");
+        LOGGER.log(Level.INFO, "Now reading: {0}", this.file.toString());
+        LOGGER.log(Level.INFO, "Starting read thread...");
+        this.thread.start();
+    }//GEN-LAST:event_formWindowOpened
+
+    private void onStart() {
+        this.initialTime = System.currentTimeMillis();
+        SwingUtilities.invokeLater(() -> {
+            LOGGER.log(Level.INFO, "Running");
+        });
+    }
+
+    private void onReadProgressUpdate(long current, long total) {
+        SwingUtilities.invokeLater(() -> {
+            if (total != 0) {
+                this.progressBar.setValue((int) ((((double) current) / total) * 100));
+            }
+            long time = ((System.currentTimeMillis() - this.initialTime) / 1000);
+            long averageSpeed;
+            if (time != 0) {
+                averageSpeed = current / time;
+            } else {
+                averageSpeed = 0;
+            }
+            this.progressLabel.setText(UIUtils.formatPercentage(current, total) + " - " + UIUtils.formatBytes(current) + " out of " + UIUtils.formatBytes(total) + " - " + UIUtils.formatSpeed(averageSpeed));
+        });
+    }
+
+    private void onEntryRead(FileEntry entry) {
+        SwingUtilities.invokeLater(() -> {
+            this.currentEntry.setText(entry.getPath().toString());
+        });
+    }
+
+    private void onFinish() {
+        SwingUtilities.invokeLater(() -> {
+            LOGGER.log(Level.INFO, "Finished reading!");
+        });
+    }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JLabel currentEntry;
+    private javax.swing.JProgressBar progressBar;
+    private javax.swing.JLabel progressLabel;
     // End of variables declaration//GEN-END:variables
+
 }

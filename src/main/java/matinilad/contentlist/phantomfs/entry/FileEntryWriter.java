@@ -28,10 +28,8 @@ package matinilad.contentlist.phantomfs.entry;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.HexFormat;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 
 /**
@@ -44,13 +42,14 @@ public class FileEntryWriter implements Closeable {
     public static final int FLAG_NO_SHA256 = 0b10;
     public static final int FLAG_NO_SAMPLE = 0b100;
     public static final int FLAG_NO_METADATA = 0b1000;
+    public static final int FLAG_NO_HEADER = 0b10000;
     
-    private final OutputStreamWriter out;
+    private final Writer out;
     private final int flags;
     
     private boolean headerWritten = false;
     
-    public FileEntryWriter(OutputStreamWriter out, int flags) {
+    public FileEntryWriter(Writer out, int flags) {
         Objects.requireNonNull(out, "out is null");
         this.out = out;
         this.flags = flags;
@@ -74,6 +73,10 @@ public class FileEntryWriter implements Closeable {
     
     private boolean writeMetadata() {
         return (this.flags & FLAG_NO_METADATA) == 0;
+    }
+    
+    private boolean writeHeaderCheck() {
+        return (this.flags & FLAG_NO_HEADER) == 0;
     }
     
     public void writeHeader() throws IOException {
@@ -120,37 +123,11 @@ public class FileEntryWriter implements Closeable {
         return result;
     }
     
-    private String escapeMetadataField(String s) {
-        StringBuilder b = new StringBuilder();
-        b.append('\'');
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '\'') {
-                b.append('\'');
-            }
-            b.append(c);
-        }
-        b.append('\'');
-        return b.toString();
-    }
-    
-    private String writeMetadata(Map<String, String> map) {
-        StringBuilder b = new StringBuilder();
-        for (Entry<String, String> e:map.entrySet()) {
-            b
-                    .append(escapeMetadataField(e.getKey()))
-                    .append('=')
-                    .append(escapeMetadataField(e.getValue()))
-                    .append(';');
-        }
-        if (!b.isEmpty()) {
-            b.setLength(b.length() - 1);
-        }
-        return b.toString();
-    }
-    
     public void writeFileEntry(FileEntry entry) throws IOException {
-        writeHeader();
+        if (writeHeaderCheck()) {
+            writeHeader();
+        }
+        this.headerWritten = true;
         
         this.out.write(System.lineSeparator());
         
@@ -195,8 +172,7 @@ public class FileEntryWriter implements Closeable {
         
         if (writeMetadata()) {
             b.append(",");
-            
-            b.append(escapeField(writeMetadata(entry.getMetadata())));
+            b.append(escapeField(entry.getMetadata().save()));
         }
         
         this.out.write(b.toString());

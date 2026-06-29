@@ -60,7 +60,9 @@ public class StatusInputStream extends FilterInputStream {
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
         int r = super.read(b, off, len);
-        getStatus().update(r);
+        if (r != -1) {
+            getStatus().update(r);
+        }
         return r;
     }
     

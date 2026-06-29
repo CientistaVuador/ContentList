@@ -1,8 +1,5 @@
 package matinilad.contentlist;
 
-import java.beans.XMLEncoder;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.Arrays;
 import matinilad.contentlist.ui.cli.CLInterface;
 import matinilad.contentlist.ui.gui.GUInterface;
@@ -13,7 +10,7 @@ import matinilad.contentlist.ui.tui.TUInterface;
  * @author Cien
  */
 public class Main {
-
+    
     public static void main(String[] args) {
         if (args == null || args.length == 0) {
             GUInterface.run();
@@ -32,7 +29,7 @@ public class Main {
             }
             default -> {
                 if (!first.equals("-help")) {
-                    System.out.println("Invalid option: "+first);
+                    System.out.println("Invalid option: " + first);
                 }
                 System.out.println("Available interfaces:");
                 System.out.println("-cli - The command line interface (create, validate)");
@@ -41,5 +38,5 @@ public class Main {
             }
         }
     }
-    
+
 }

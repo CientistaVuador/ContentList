@@ -479,11 +479,6 @@ public class StatusDialog extends javax.swing.JDialog {
         }
     }
     
-    @Deprecated
-    public void println(String line) {
-        this.logTextArea.append(line + "\n");
-    }
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton cancelButton;
     private javax.swing.JMenuItem clearLogButton;

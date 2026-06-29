@@ -1,4 +1,4 @@
-Content List 1.1
+Content List 2.0
 
 This program is designed to generate a csv containing general information
 about files and directories, which can then be used as a "ghost" file system

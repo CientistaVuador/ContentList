@@ -42,7 +42,7 @@ public class FrameIcon {
     public static Image getIcon() {
         if (icon == null) {
             try {
-                icon = ImageIO.read(FrameIcon.class.getResource("log.png"));
+                icon = ImageIO.read(FrameIcon.class.getResource("icon.png"));
             } catch (IOException ex) {
                 ex.printStackTrace(System.out);
                 icon = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);

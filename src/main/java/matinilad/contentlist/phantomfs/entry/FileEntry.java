@@ -20,42 +20,13 @@ import matinilad.contentlist.phantomfs.PhantomPath;
  */
 public class FileEntry {
 
-    @Deprecated
-    public static interface ValidationCallbacks {
+    public static final PhantomPath METADATA_NAME = PhantomPath.of("/default/name.txt");
+    public static final PhantomPath METADATA_AUTHOR = PhantomPath.of("/default/author.txt");
+    public static final PhantomPath METADATA_DESCRIPTION = PhantomPath.of("/default/description.txt");
 
-        public void setEntry(FileEntry entry) throws IOException, InterruptedException;
-
-        public void setPath(Path path) throws IOException, InterruptedException;
-
-        public void setSize(long size) throws IOException, InterruptedException;
-
-        public void progressUpdate(long bytes) throws IOException, InterruptedException;
-
-        public void accepted(FileEntryValidatorReason reason) throws IOException, InterruptedException;
-
-        public void refused(FileEntryValidatorReason reason, Object foundValue) throws IOException, InterruptedException;
-    }
-
-    @Deprecated
-    public static String csvHeader() {
-        try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8), FileEntryWriter.FLAG_NO_METADATA)) {
-                writer.writeHeader();
-            }
-            return out.toString(StandardCharsets.UTF_8);
-        } catch (IOException ex) {
-            throw new UncheckedIOException(ex);
-        }
-    }
-
-    public static final String METADATA_NAME = "default.name";
-    public static final String METADATA_AUTHOR = "default.author";
-    public static final String METADATA_DESCRIPTION = "default.description";
-    
     private final PhantomPath path;
     private final FileEntryType type;
-    
+
     private long created = System.currentTimeMillis();
     private long modified = System.currentTimeMillis();
     private long size = 0;
@@ -63,9 +34,9 @@ public class FileEntry {
     private int directories = 0;
     private byte[] sha256 = null;
     private byte[] sample = null;
-    
-    private final Map<String, String> metadata = new LinkedHashMap<>();
-    
+
+    private final FileEntryMetadata metadata = new FileEntryMetadata();
+
     public FileEntry(PhantomPath path, FileEntryType type) {
         Objects.requireNonNull(path, "path is null");
         Objects.requireNonNull(type, "type is null");
@@ -78,55 +49,7 @@ public class FileEntry {
         this.path = path;
         this.type = type;
     }
-    
-    @Deprecated
-    public FileEntry(
-            PhantomPath path,
-            FileEntryType type,
-            long created, long modified, long size,
-            int files, int directories,
-            byte[] sha256, byte[] sample,
-            Map<String, String> metadata
-    ) {
-        Objects.requireNonNull(path, "path is null");
-        Objects.requireNonNull(type, "type is null");
-        if (size < 0) {
-            throw new IllegalArgumentException("size is negative");
-        }
-        if (sha256 != null && sha256.length != 32) {
-            throw new IllegalArgumentException("Invalid sha256 length! " + sha256.length + " found, but 32 is required.");
-        }
-        if (path.hasSpecialLinks()) {
-            throw new IllegalArgumentException("path must not contain special links!");
-        }
-        if (path.isRelative()) {
-            throw new IllegalArgumentException("path must be absolute!");
-        }
-        this.path = path;
-        this.type = type;
-        this.created = created;
-        this.modified = modified;
-        this.size = size;
-        this.files = files;
-        this.directories = directories;
-        this.sha256 = (sha256 == null ? null : sha256.clone());
-        this.sample = (sample == null ? null : sample.clone());
-        if (metadata != null) {
-            this.metadata.putAll(metadata);
-        }
-    }
 
-    @Deprecated
-    public FileEntry(
-            PhantomPath path,
-            FileEntryType type,
-            long created, long modified, long size,
-            int files, int directories,
-            byte[] sha256, byte[] sample
-    ) {
-        this(path, type, created, modified, size, files, directories, sha256, sample, null);
-    }
-    
     public PhantomPath getPath() {
         return path;
     }
@@ -154,7 +77,7 @@ public class FileEntry {
     public long getSize() {
         return size;
     }
-    
+
     public void setSize(long size) {
         if (size < 0) {
             throw new IllegalArgumentException("size is negative");
@@ -172,7 +95,7 @@ public class FileEntry {
         }
         this.files = files;
     }
-    
+
     public int getDirectories() {
         return directories;
     }
@@ -194,7 +117,7 @@ public class FileEntry {
         }
         this.sha256 = (sha256 == null ? null : sha256.clone());
     }
-    
+
     public byte[] getSample() {
         return (this.sample == null ? null : this.sample.clone());
     }
@@ -203,101 +126,21 @@ public class FileEntry {
         this.sample = (sample == null ? null : sample.clone());
     }
 
-    public Map<String, String> getMetadata() {
+    public FileEntryMetadata getMetadata() {
         return metadata;
-    }
-    
-    public String getMetadata(String key) {
-        return getMetadata().get(key);
-    }
-    
-    public void setMetadata(String key, String value) {
-        getMetadata().put(key, value);
-    }
-    
-    public String getMetadataName() {
-        return getMetadata(METADATA_NAME);
-    }
-    
-    public void setMetadataName(String name) {
-        setMetadata(METADATA_NAME, name);
-    }
-    
-    public String getMetadataAuthor() {
-        return getMetadata(METADATA_AUTHOR);
-    }
-    
-    public void setMetadataAuthor(String author) {
-        setMetadata(METADATA_AUTHOR, author);
-    }
-    
-    public String getMetadataDescription() {
-        return getMetadata(METADATA_DESCRIPTION);
-    }
-    
-    public void setMetadataDescription(String description) {
-        setMetadata(METADATA_DESCRIPTION, description);
-    }
-    
-    @Deprecated
-    public boolean validate(Path rootDirectory, ValidationCallbacks callbacks) throws IOException, InterruptedException {
-        FileEntryValidator validator = new FileEntryValidator(rootDirectory, this) {
-            @Override
-            public boolean onShouldInterrupt() throws IOException, InterruptedException {
-                return Thread.interrupted();
-            }
-
-            @Override
-            public void onProgressUpdate(long bytes) throws IOException, InterruptedException {
-                if (callbacks != null) {
-                    callbacks.progressUpdate(bytes);
-                }
-            }
-            
-            @Override
-            public void onEntryAccepted(FileEntryValidatorReason reason) throws IOException, InterruptedException {
-                if (callbacks != null) {
-                    callbacks.accepted(reason);
-                }
-                if (reason == FileEntryValidatorReason.SIZE) {
-                    if (callbacks != null) {
-                        callbacks.setSize(getEntry().getSize());
-                    }
-                }
-            }
-        };
-        if (callbacks != null) {
-            callbacks.setEntry(validator.getEntry());
-            callbacks.setPath(validator.getPath());
-        }
-        FileEntryValidatorResult result = validator.validate();
-        if (!result.success()) {
-            if (callbacks != null) {
-                callbacks.refused(result.getReason(), result.getFoundValue());
-            }
-            return false;
-        }
-        
-        return true;
-    }
-    
-    @Deprecated
-    public String toCSVRecord() {
-        try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8), FileEntryWriter.FLAG_NO_METADATA)) {
-                writer.writeFileEntry(this);
-            }
-            List<String> lines = out.toString(StandardCharsets.UTF_8).lines().toList();
-            return lines.subList(1, lines.size()).stream().collect(Collectors.joining(System.lineSeparator()));
-        } catch (IOException ex) {
-            throw new UncheckedIOException(ex);
-        }
     }
     
     @Override
     public String toString() {
-        return toCSVRecord();
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8), FileEntryWriter.FLAG_NO_HEADER)) {
+                writer.writeFileEntry(this);
+            }
+            return out.toString(StandardCharsets.UTF_8);
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
     }
 
     @Override
