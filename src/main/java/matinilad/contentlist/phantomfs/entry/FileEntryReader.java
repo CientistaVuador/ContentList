@@ -43,6 +43,7 @@ import matinilad.contentlist.phantomfs.PhantomPath;
  */
 public class FileEntryReader implements Closeable {
     
+    //todo: add line count
     private final Reader in;
 
     private int peekChar = -1;
@@ -221,14 +222,14 @@ public class FileEntryReader implements Closeable {
                     return null;
                 }
                 if (quotesOpen) {
-                    //throw new IOException("Quotes not closed.");
+                    throw new IOException("Quotes not closed.");
                 }
                 fields.add(out.toString());
                 break;
             }
 
             if (quotesClosed && current != ',' && current != '\n' && current != '\r') {
-                //throw new IOException("Expected ',' or '\\n' or '\\r'");
+                throw new IOException("Expected ',' or '\\n' or '\\r'");
             }
 
             if (quotesOpen) {
@@ -247,7 +248,7 @@ public class FileEntryReader implements Closeable {
 
             if (current == '"') {
                 if (!out.isEmpty()) {
-                    //throw new IOException("Field does not start with quotes.");
+                    throw new IOException("Field does not start with quotes.");
                 }
                 quotesOpen = true;
                 continue;

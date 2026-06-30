@@ -573,12 +573,17 @@ public class MainWindow extends javax.swing.JFrame {
         file = file.getAbsoluteFile();
         this.rootDirectorySuggestion = file.getParentFile();
 
-        LOGGER.log(Level.INFO, "input file: {0}", file.toString());
-        LOGGER.log(Level.INFO, "root directory suggestion: {0}", this.rootDirectorySuggestion);
+        LOGGER.log(Level.INFO, "Input file: {0}", file.toString());
+        LOGGER.log(Level.INFO, "Root directory suggestion: {0}", this.rootDirectorySuggestion);
 
-        OpenDialog s = new OpenDialog(file, this, true);
-        s.setLocationRelativeTo(this);
-        s.setVisible(true);
+        OpenDialog o = new OpenDialog(this, true) {
+            @Override
+            protected void onFileSystemReady(PhantomFileSystem fs) {
+                openFileSystem(fs);
+            }
+        };
+        o.open(file);
+        o.setVisible(true);
     }
 
     private void openButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openButtonActionPerformed

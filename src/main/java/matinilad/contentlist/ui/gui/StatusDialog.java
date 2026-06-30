@@ -31,6 +31,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.ErrorManager;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -54,7 +56,23 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 public class StatusDialog extends javax.swing.JDialog {
 
     private static final Logger LOGGER = Logger.getLogger(StatusDialog.class.getName());
+    
+    private static class LoggerLevelJCheckBoxMenuItem extends JCheckBoxMenuItem {
 
+        private final Level level;
+
+        public LoggerLevelJCheckBoxMenuItem(Level level) {
+            super(level.getLocalizedName());
+            this.level = level;
+        }
+
+        public Level getLevel() {
+            return level;
+        }
+    }
+    
+    private final List<LoggerLevelJCheckBoxMenuItem> loggerLevelButtons = new ArrayList<>();
+    
     private final Handler loggerHandler = new Handler() {
         private int warnings = 0;
         private int errors = 0;
@@ -66,8 +84,12 @@ public class StatusDialog extends javax.swing.JDialog {
         @Override
         public synchronized void setLevel(Level newLevel) throws SecurityException {
             super.setLevel(newLevel);
-            
-            //todo: menu bar logic
+
+            SwingUtilities.invokeLater(() -> {
+                for (LoggerLevelJCheckBoxMenuItem e : loggerLevelButtons) {
+                    e.setSelected(e.getLevel().equals(newLevel));
+                }
+            });
         }
         
         @Override
@@ -96,7 +118,8 @@ public class StatusDialog extends javax.swing.JDialog {
 
             final boolean finalUpdatedCount = updatedCount;
             SwingUtilities.invokeLater(() -> {
-                StatusDialog.this.logTextArea.append(msg);
+                logTextArea.append(msg);
+                
                 if (finalUpdatedCount) {
                     StringBuilder b = new StringBuilder();
                     b.append(this.warnings);
@@ -111,7 +134,8 @@ public class StatusDialog extends javax.swing.JDialog {
                     } else {
                         b.append(" Errors");
                     }
-                    StatusDialog.this.logCount.setText(b.toString());
+                    
+                    logCount.setText(b.toString());
                 }
             });
         }
@@ -291,25 +315,21 @@ public class StatusDialog extends javax.swing.JDialog {
         logLevelMenu.setText("Log Level");
         {
             Level[] levels = {Level.ALL, Level.INFO, Level.WARNING, Level.SEVERE, Level.OFF};
-            this.loggerHandler.setLevel(Level.WARNING);
             for (int i = 0; i < levels.length; i++) {
                 Level level = levels[i];
                 if (level.equals(Level.INFO) || level.equals(Level.OFF)) {
                     this.logLevelMenu.add(new JSeparator());
                 }
-                JCheckBoxMenuItem item = new JCheckBoxMenuItem(level.getLocalizedName());
-                item.setSelected(level.equals(Level.WARNING));
+
+                LoggerLevelJCheckBoxMenuItem item = new LoggerLevelJCheckBoxMenuItem(level);
                 item.addActionListener((evt) -> {
-                    for (int j = 0; j < this.logLevelMenu.getItemCount(); j++) {
-                        if (this.logLevelMenu.getItem(j) instanceof JCheckBoxMenuItem e) {
-                            e.setSelected(false);
-                        }
-                    }
-                    item.setSelected(true);
                     this.loggerHandler.setLevel(level);
                 });
+
                 this.logLevelMenu.add(item);
+                this.loggerLevelButtons.add(item);
             }
+            this.loggerHandler.setLevel(Level.WARNING);
         }
         jMenu2.add(logLevelMenu);
         jMenu2.add(jSeparator1);
@@ -471,14 +491,9 @@ public class StatusDialog extends javax.swing.JDialog {
     }
 
     public void removeStatusPanel() {
-        for (int i = 0; i < this.jTabbedPane1.getTabCount(); i++) {
-            if (this.jTabbedPane1.getComponentAt(i) == this.statusPanel) {
-                this.jTabbedPane1.removeTabAt(i);
-                break;
-            }
-        }
+        this.jTabbedPane1.remove(this.statusPanel);
     }
-    
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton cancelButton;
     private javax.swing.JMenuItem clearLogButton;
@@ -490,7 +505,7 @@ public class StatusDialog extends javax.swing.JDialog {
     private javax.swing.JMenu jMenu2;
     private javax.swing.JMenuBar jMenuBar1;
     private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JSeparator jSeparator1;
+    private javax.swing.JPopupMenu.Separator jSeparator1;
     private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JLabel logCount;
     private javax.swing.JMenu logLevelMenu;
