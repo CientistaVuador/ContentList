@@ -125,7 +125,7 @@ public class MainWindow extends javax.swing.JFrame {
         this.log = new StatusDialog(this, true);
         this.log.removeStatusPanel();
         this.log.setTitle("Log");
-        this.about = new About(this, true, UIUtils.about());
+        this.about = new About(this, true, UIUtils.name()+" "+UIUtils.version()+"\n\n"+UIUtils.about());
 
         Logger.getLogger("").addHandler(this.log.getLoggerHandler());
     }
@@ -260,7 +260,7 @@ public class MainWindow extends javax.swing.JFrame {
         filePopupMenu.add(filePropertiesButton);
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setTitle("Content List 2.0");
+        setTitle(UIUtils.name()+" "+UIUtils.version());
         setIconImage(FrameIcon.getIcon());
 
         fileTableList.setModel(new javax.swing.table.DefaultTableModel(

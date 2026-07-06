@@ -119,22 +119,39 @@ public class UIUtils {
         return out.toString(StandardCharsets.UTF_8);
     }
     
-    private static volatile String aboutText = null;
-    
-    public static String about() {
-        String about = aboutText;
-        if (about != null) {
-            return about;
-        }
+    private static String readFile(String name) {
         try {
-            try (InputStream in = UIUtils.class.getResourceAsStream("about.txt")) {
-                about = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            try (InputStream in = UIUtils.class.getResourceAsStream(name)) {
+                return new String(in.readAllBytes(), StandardCharsets.UTF_8);
             }
         } catch (IOException ex) {
-            about = "Failed to read about text!\n"+stacktraceOf(ex);
+            return "Failed to read '"+name+"'! "+ex.getLocalizedMessage();
         }
-        aboutText = about;
-        return about;
+    }
+    
+    private static volatile String aboutText = null;
+    private static volatile String nameText = null;
+    private static volatile String versionText = null;
+    
+    public static String about() {
+        if (aboutText == null) {
+            aboutText = readFile("about.txt");
+        }
+        return aboutText;
+    }
+    
+    public static String name() {
+        if (nameText == null) {
+            nameText = readFile("name.txt").trim();
+        }
+        return nameText;
+    }
+    
+    public static String version() {
+        if (versionText == null) {
+            versionText = readFile("version.txt").trim();
+        }
+        return versionText;
     }
     
     private UIUtils() {

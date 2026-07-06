@@ -1,6 +1,7 @@
 package matinilad.contentlist;
 
 import java.util.Arrays;
+import matinilad.contentlist.ui.UIUtils;
 import matinilad.contentlist.ui.cli.CLInterface;
 import matinilad.contentlist.ui.gui.GUInterface;
 import matinilad.contentlist.ui.tui.TUInterface;
@@ -18,6 +19,11 @@ public class Main {
         }
         String first = args[0];
         switch (first) {
+            case "-version" -> {
+                System.out.println(UIUtils.name()+" "+UIUtils.version());
+                System.out.println();
+                System.out.println(UIUtils.about());
+            }
             case "-cli" -> {
                 CLInterface.run(System.out, Arrays.copyOfRange(args, 1, args.length));
             }
@@ -32,6 +38,7 @@ public class Main {
                     System.out.println("Invalid option: " + first);
                 }
                 System.out.println("Available interfaces:");
+                System.out.println("-version - Displays information about this program");
                 System.out.println("-cli - The command line interface (create, validate)");
                 System.out.println("-tui - The terminal user interface (open)");
                 System.out.println("-gui - The graphical user interface (default) (create, validate, open)");
