@@ -49,11 +49,17 @@ public class UIUtils {
                 .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT));
     }
     
-    public static final long BYTE = 1;
-    public static final long KILOBYTE = BYTE * 1000;
-    public static final long MEGABYTE = KILOBYTE * 1000;
-    public static final long GIGABYTE = MEGABYTE * 1000;
-    public static final long TERABYTE = GIGABYTE * 1000;
+    public static final long BYTE = DecimalSpaceUnit.BYTE.getSize();
+    
+    public static final long KILOBYTE = DecimalSpaceUnit.KILOBYTE.getSize();
+    public static final long MEGABYTE = DecimalSpaceUnit.MEGABYTE.getSize();
+    public static final long GIGABYTE = DecimalSpaceUnit.GIGABYTE.getSize();
+    public static final long TERABYTE = DecimalSpaceUnit.TERABYTE.getSize();
+    
+    public static final long KIBIBYTE = BinarySpaceUnit.KIBIBYTE.getSize();
+    public static final long MEBIBYTE = BinarySpaceUnit.MEBIBYTE.getSize();
+    public static final long GIBIBYTE = BinarySpaceUnit.GIBIBYTE.getSize();
+    public static final long TEBIBYTE = BinarySpaceUnit.TEBIBYTE.getSize();
     
     public static String formatPercentage(long current, long total) {
         if (total == 0) {
@@ -63,52 +69,15 @@ public class UIUtils {
     }
     
     public static String formatBytesShort(long bytes) {
-        if (bytes > TERABYTE) {
-            return String.format("%.2f", ((double)bytes) / TERABYTE)+" TB";
-        }
-        if (bytes > GIGABYTE) {
-            return String.format("%.2f", ((double)bytes) / GIGABYTE)+" GB";
-        }
-        if (bytes > MEGABYTE) {
-            return String.format("%.2f", ((double)bytes) / MEGABYTE)+" MB";
-        }
-        if (bytes > KILOBYTE) {
-            return String.format("%.2f", ((double)bytes) / KILOBYTE)+" KB";
-        }
-        return bytes+" B";
+        return DecimalSpaceUnit.format(bytes, true);
+    }
+    
+    public static String formatBytes(long bytes) {
+        return DecimalSpaceUnit.format(bytes, false);
     }
     
     public static String formatSpeed(long bytesPerSecond) {
         return formatBytesShort(bytesPerSecond)+"/s";
-    }
-    
-    public static String formatBytes(long bytes) {
-        long terabytes = bytes / TERABYTE;
-        bytes -= terabytes * TERABYTE;
-        long gigabytes = bytes / GIGABYTE;
-        bytes -= gigabytes * GIGABYTE;
-        long megabytes = bytes / MEGABYTE;
-        bytes -= megabytes * MEGABYTE;
-        long kilobytes = bytes / KILOBYTE;
-        bytes -= kilobytes * KILOBYTE;
-        
-        StringBuilder b = new StringBuilder();
-        
-        if (terabytes != 0) {
-            b.append(terabytes).append(" TB, ");
-        }
-        if (gigabytes != 0) {
-            b.append(gigabytes).append(" GB, ");
-        }
-        if (megabytes != 0) {
-            b.append(megabytes).append(" MB, ");
-        }
-        if (kilobytes != 0) {
-            b.append(kilobytes).append(" KB, ");
-        }
-        b.append(bytes).append(" Bytes");
-        
-        return b.toString();
     }
     
     public static String stacktraceOf(Throwable t) {
