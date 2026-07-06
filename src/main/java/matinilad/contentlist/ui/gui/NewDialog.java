@@ -658,21 +658,21 @@ public class NewDialog extends javax.swing.JDialog {
             try {
                 create(dialog, output, inputFiles, finalFlags, sampleSize, name, author, description);
             } catch (InterruptedException e) {
-                LOGGER.log(Level.INFO, "interrupted by user", e);
+                LOGGER.log(Level.INFO, "Interrupted by user", e);
                 if (!output.delete()) {
-                    LOGGER.log(Level.SEVERE, "could not delete {0}", output);
+                    LOGGER.log(Level.SEVERE, "Could not delete {0}", output);
                 }
             } catch (Throwable t) {
                 LOGGER.log(Level.SEVERE, null, t);
             }
             SwingUtilities.invokeLater(() -> {
-                LOGGER.info("finished!");
+                LOGGER.info("Finished!");
                 LOGGER.removeHandler(dialog.getLoggerHandler());
                 dialog.getCancelButton().setEnabled(false);
                 dialog.updateAndResetTime("Finished!");
                 Toolkit.getDefaultToolkit().beep();
             });
-        }, "create-content-list");
+        });
         dialog.getCancelButton().addActionListener((e) -> {
             th.interrupt();
         });

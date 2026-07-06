@@ -544,6 +544,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     public void openFileSystem(PhantomFileSystem fs) {
         this.fileSystem = fs;
+        this.rootDirectory = null;
         this.currentPath = PhantomPath.of("/");
         this.searchField.setEnabled(true);
         this.pathField.setEnabled(true);
@@ -731,11 +732,15 @@ public class MainWindow extends javax.swing.JFrame {
         chooser.setMultiSelectionEnabled(false);
         int result = chooser.showOpenDialog(this);
         if (result == JFileChooser.APPROVE_OPTION) {
-            this.rootDirectory = chooser.getSelectedFile();
-            this.rootDirectorySuggestion = null;
-            LOGGER.log(Level.INFO, "root directory: {0}", this.rootDirectory.toString());
+            setRootDirectory(chooser.getSelectedFile());
         }
     }//GEN-LAST:event_rootDirectoryButtonActionPerformed
+
+    private void setRootDirectory(File rootDirectory) {
+        this.rootDirectory = rootDirectory;
+        this.rootDirectorySuggestion = null;
+        LOGGER.log(Level.INFO, "root directory: {0}", this.rootDirectory.toString());
+    }
 
     private File getRootDirectory() {
         File dir = this.rootDirectory;
@@ -747,6 +752,19 @@ public class MainWindow extends javax.swing.JFrame {
                     "Root Directory not set.",
                     JOptionPane.WARNING_MESSAGE
             );
+            if (this.rootDirectorySuggestion != null) {
+                Toolkit.getDefaultToolkit().beep();
+                int result = JOptionPane.showConfirmDialog(
+                        this,
+                        "Would you like to set \"" + this.rootDirectorySuggestion.toString() + "\" as your root path?",
+                        "Root Directory Suggestion",
+                        JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE
+                );
+                if (result == JOptionPane.YES_OPTION) {
+                    setRootDirectory(this.rootDirectorySuggestion);
+                    return this.rootDirectory;
+                }
+            }
             return null;
         }
         return dir;
@@ -1023,8 +1041,12 @@ public class MainWindow extends javax.swing.JFrame {
             return;
         }
         FileEntry[] entries = this.fileSystem.listEntries(selectedPaths);
-        PathValidateDialog dialog = new PathValidateDialog(entries, base.toPath(), this, false);
-        dialog.setLocationRelativeTo(this);
+
+        //PathValidateDialog dialog = new PathValidateDialog(entries, base.toPath(), this, false);
+        //dialog.setLocationRelativeTo(this);
+        //dialog.setVisible(true);
+        ValidateDialog dialog = new ValidateDialog(this, true);
+        dialog.validate(entries, base);
         dialog.setVisible(true);
     }//GEN-LAST:event_validateFileButtonActionPerformed
 

@@ -80,17 +80,20 @@ public class OpenDialog extends StatusDialog {
             }
             setVisible(false);
         });
-        LOGGER.addHandler(getLoggerHandler());
     }
 
     protected void onFileSystemReady(PhantomFileSystem fs) {
 
     }
-    
+
+    public boolean isOpening() {
+        return this.thread != null;
+    }
+
     public void open(Path path) {
         openObject(path);
     }
-    
+
     public void open(File file) {
         openObject(file);
     }
@@ -139,6 +142,8 @@ public class OpenDialog extends StatusDialog {
             return;
         }
 
+        LOGGER.addHandler(getLoggerHandler());
+
         String filePath = getFilePath(obj);
         LOGGER.log(Level.INFO, "Now reading: {0}", filePath);
 
@@ -149,66 +154,69 @@ public class OpenDialog extends StatusDialog {
 
         this.thread = new Thread(() -> {
             try {
-                FileTransferStatus transferStatus = new FileTransferStatus();
-                transferStatus.setSize(getFileSize(obj));
+                try {
+                    FileTransferStatus transferStatus = new FileTransferStatus();
+                    transferStatus.setSize(getFileSize(obj));
 
-                Future<?> updateTask = null;
+                    Future<?> updateTask = null;
 
-                PhantomFileSystem fs = new PhantomFileSystem();
-                try (FileEntryReader reader = new FileEntryReader(new BufferedReader(new InputStreamReader(new StatusInputStream(transferStatus, getFileStream(obj)), StandardCharsets.UTF_8)))) {
-                    int entryCount = 0;
+                    PhantomFileSystem fs = new PhantomFileSystem();
+                    try (FileEntryReader reader = new FileEntryReader(new BufferedReader(new InputStreamReader(new StatusInputStream(transferStatus, getFileStream(obj)), StandardCharsets.UTF_8)))) {
+                        int entryCount = 0;
 
-                    FileEntry entry;
-                    while ((entry = reader.readEntry()) != null) {
-                        if (Thread.interrupted()) {
-                            throw new InterruptedException();
-                        }
-                        
-                        fs.writeEntry(entry);
-                        entryCount++;
-                        
-                        if (updateTask == null || updateTask.isDone()) {
-                            final float currentProgress = transferStatus.getProgress();
-                            final PhantomPath currentEntryPath = entry.getPath();
-                            final int currentEntryCount = entryCount;
-                            updateTask = CompletableFuture.runAsync(() -> {
-                                try {
-                                    SwingUtilities.invokeAndWait(() -> {
-                                        setCurrentProgress(currentProgress);
-                                        getCurrentItemStatus().setText(currentEntryPath.toString());
-                                        getCurrentGlobalStatus().setText(currentEntryCount + (currentEntryCount == 1 ? " Entry " : " Entries"));
-                                    });
-                                } catch (InterruptedException | InvocationTargetException ex) {
-                                    LOGGER.log(Level.WARNING, "Error at update task", ex);
-                                }
-                            });
+                        FileEntry entry;
+                        while ((entry = reader.readEntry()) != null) {
+                            if (Thread.interrupted()) {
+                                throw new InterruptedException();
+                            }
+
+                            fs.writeEntry(entry);
+                            entryCount++;
+
+                            if (updateTask == null || updateTask.isDone()) {
+                                final float currentProgress = transferStatus.getProgress();
+                                final PhantomPath currentEntryPath = entry.getPath();
+                                final int currentEntryCount = entryCount;
+                                updateTask = CompletableFuture.runAsync(() -> {
+                                    try {
+                                        SwingUtilities.invokeAndWait(() -> {
+                                            setCurrentProgress(currentProgress);
+                                            getCurrentItemStatus().setText(currentEntryPath.toString());
+                                            getCurrentGlobalStatus().setText(currentEntryCount + (currentEntryCount == 1 ? " Entry " : " Entries"));
+                                        });
+                                    } catch (InterruptedException | InvocationTargetException ex) {
+                                        LOGGER.log(Level.WARNING, "Error at update task", ex);
+                                    }
+                                });
+                            }
                         }
                     }
-                }
-                SwingUtilities.invokeLater(() -> {
-                    setVisible(false);
-                    if (this.thread != null) {
-                        onFileSystemReady(fs);
-                    }
-                    this.thread = null;
-                });
-            } catch (Throwable t) {
-                if (!(t instanceof InterruptedException)) {
-                    LOGGER.log(Level.SEVERE, "Failed to read file!", t);
                     SwingUtilities.invokeLater(() -> {
-                        Toolkit.getDefaultToolkit().beep();
-                        getCancelButton().setEnabled(false);
-                        JOptionPane.showMessageDialog(OpenDialog.this,
-                                "Failed to read file! Check log for details!",
-                                "Failed!",
-                                JOptionPane.ERROR_MESSAGE
-                        );
+                        setVisible(false);
+                        if (this.thread != null) {
+                            onFileSystemReady(fs);
+                        }
                     });
-                } else {
-                    LOGGER.info("Canceled");
+                } catch (Throwable t) {
+                    if (!(t instanceof InterruptedException)) {
+                        LOGGER.log(Level.SEVERE, "Failed to read file!", t);
+                        SwingUtilities.invokeLater(() -> {
+                            Toolkit.getDefaultToolkit().beep();
+                            getCancelButton().setEnabled(false);
+                            JOptionPane.showMessageDialog(OpenDialog.this,
+                                    "Failed to read file! Check log for details!",
+                                    "Failed!",
+                                    JOptionPane.ERROR_MESSAGE
+                            );
+                        });
+                    } else {
+                        LOGGER.info("Canceled");
+                    }
                 }
+            } finally {
                 SwingUtilities.invokeLater(() -> {
                     this.thread = null;
+                    LOGGER.removeHandler(getLoggerHandler());
                 });
             }
         });

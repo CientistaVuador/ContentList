@@ -72,6 +72,10 @@ public class FileEntryValidator {
         return Thread.interrupted();
     }
     
+    protected void onFileSize(long bytes) throws IOException, InterruptedException {
+        
+    }
+    
     protected void onProgressUpdate(long bytes) throws IOException, InterruptedException {
         
     }
@@ -109,7 +113,7 @@ public class FileEntryValidator {
         onEntryAccepted(FileEntryValidatorReason.EXISTENCE);
         
         checkInterrupt();
-
+        
         //check file type
         FileEntryType otherType = FileEntryType.typeOf(f);
         if (!e.getType().equals(otherType)) {
@@ -122,6 +126,7 @@ public class FileEntryValidator {
         if (otherType.equals(FileEntryType.FILE)) {
             //check file size
             long otherSize = Files.size(f);
+            onFileSize(otherSize);
             if (otherSize != e.getSize()) {
                 return new FileEntryValidatorResult(this, FileEntryValidatorReason.SIZE, e.getSize(), otherSize);
             }
