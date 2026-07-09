@@ -94,7 +94,7 @@ public class PhantomPathTableModel extends DefaultTableModel {
             rowData[1] = name;
             if (entry != null) {
                 rowData[0] = entry.getType().getDisplayName();
-                rowData[2] = UIUtils.formatBytes(entry.getSize());
+                rowData[2] = UIUtils.formatBytesShort(entry.getSize());
                 rowData[3] = UIUtils.asShortLocalizedDateTime(entry.getCreated());
                 rowData[4] = UIUtils.asShortLocalizedDateTime(entry.getModified());
             }

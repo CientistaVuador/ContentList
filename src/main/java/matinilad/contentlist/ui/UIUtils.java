@@ -35,19 +35,14 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
  * @author Cien
  */
 public class UIUtils {
-    
-    public static String asShortLocalizedDateTime(long utcTime) {
-        return Instant
-                .ofEpochMilli(utcTime)
-                .atZone(ZoneId.systemDefault())
-                .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT));
-    }
     
     public static final long BYTE = DecimalSpaceUnit.BYTE.getSize();
     
@@ -61,19 +56,36 @@ public class UIUtils {
     public static final long GIBIBYTE = BinarySpaceUnit.GIBIBYTE.getSize();
     public static final long TEBIBYTE = BinarySpaceUnit.TEBIBYTE.getSize();
     
+    private static SpaceUnit spaceUnit = DecimalSpaceUnit.BYTE;
+    
+    public static void setSpaceUnit(SpaceUnit unit) {
+        spaceUnit = (unit == null ? DecimalSpaceUnit.BYTE : unit);
+    }
+    
+    public static SpaceUnit getSpaceUnit() {
+        return spaceUnit;
+    }
+    
+    public static String formatBytesShort(long bytes) {
+        return SpaceUnit.format(spaceUnit, bytes, true);
+    }
+    
+    public static String formatBytes(long bytes) {
+         return SpaceUnit.format(spaceUnit, bytes, false);
+    }
+    
+    public static String asShortLocalizedDateTime(long utcTime) {
+        return Instant
+                .ofEpochMilli(utcTime)
+                .atZone(ZoneId.systemDefault())
+                .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT));
+    }
+    
     public static String formatPercentage(long current, long total) {
         if (total == 0) {
             return "--%";
         }
         return String.format("%.2f", (((double)current) / total) * 100.0)+"%";
-    }
-    
-    public static String formatBytesShort(long bytes) {
-        return DecimalSpaceUnit.format(bytes, true);
-    }
-    
-    public static String formatBytes(long bytes) {
-        return DecimalSpaceUnit.format(bytes, false);
     }
     
     public static String formatSpeed(long bytesPerSecond) {

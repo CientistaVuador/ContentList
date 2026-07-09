@@ -24,56 +24,41 @@
  *
  * For more information, please refer to <https://unlicense.org>
  */
-package matinilad.contentlist.ui;
+package matinilad.contentlist.ui.cfg;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import matinilad.contentlist.ui.UIUtils;
 
 /**
  *
  * @author Cien
  */
-public interface SpaceUnit {
+public class Configuration {
     
-    public static String format(SpaceUnit unit, long bytes, boolean shortened) {
-        SpaceUnit[] units = unit.getSpaceUnits();
-        SpaceUnit byteUnit = units[0];
-        
-        if (bytes == 0) {
-            return "0 " + byteUnit.getSuffix();
+    public static Path getPath() throws IOException {
+        String os = System.getProperty("os.name").toLowerCase();
+        if (os == null) {
+            os = "";
+        }
+        String userHome = System.getProperty("user.home");
+        if (userHome == null) {
+            userHome = "";
         }
         
-        SpaceUnit selectedUnit = byteUnit;
-        for (int i = (units.length - 1); i >= 0; i--) {
-            selectedUnit = units[i];
-            if (bytes >= selectedUnit.getSize()) {
-                break;
-            }
-        }
-
-        if (selectedUnit == byteUnit) {
-            return bytes + " " + byteUnit.getSuffix();
+        Path homePath = Path.of(userHome);
+        if (os.startsWith("windows") && !userHome.isEmpty()) {
+            homePath = homePath.resolve(Path.of("AppData", "Roaming"));
         }
         
-        float divided;
-        if (bytes != selectedUnit.getSize()) {
-            divided = (float) ((double) bytes / selectedUnit.getSize());
-        } else {
-            divided = 1f;
-        }
-
-        StringBuilder b = new StringBuilder();
-
-        b.append(String.format("%.2f", divided)).append(" ").append(selectedUnit.getSuffix());
-        
-        if (!shortened) {
-            b.append(" (").append(bytes).append(" ").append(byteUnit.getSuffix()).append(")");
-        }
-
-        return b.toString();
+        Path configPath = homePath.resolve(Path.of("."+UIUtils.name(), UIUtils.version()));
+        Files.createDirectories(configPath);
+        return configPath;
     }
     
-    public SpaceUnit[] getSpaceUnits();
-
-    public long getSize();
-
-    public String getSuffix();
+    private Configuration() {
+        
+    }
+    
 }

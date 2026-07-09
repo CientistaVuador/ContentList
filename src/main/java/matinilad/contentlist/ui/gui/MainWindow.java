@@ -49,9 +49,11 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ImageIcon;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFileChooser;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
@@ -66,7 +68,11 @@ import javax.swing.table.DefaultTableModel;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.PhantomFileSystem;
 import matinilad.contentlist.phantomfs.PhantomPath;
+import matinilad.contentlist.ui.BinarySpaceUnit;
+import matinilad.contentlist.ui.DecimalSpaceUnit;
+import matinilad.contentlist.ui.SpaceUnit;
 import matinilad.contentlist.ui.UIUtils;
+import matinilad.contentlist.ui.cfg.Configuration;
 
 /**
  *
@@ -79,7 +85,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     private StatusDialog log;
     private About about;
-
+    
     private final ExecutorService searchThread = Executors.newSingleThreadExecutor();
 
     private final ImageIcon okIcon = new ImageIcon(MainWindow.class.getResource("check_ok.png"));
@@ -110,7 +116,7 @@ public class MainWindow extends javax.swing.JFrame {
     {
         this.searchTimer.setRepeats(false);
     }
-
+    
     /**
      * Creates new form MainWindow
      */
@@ -173,6 +179,7 @@ public class MainWindow extends javax.swing.JFrame {
         jMenu5 = new javax.swing.JMenu();
         caseSensitiveSearch = new javax.swing.JCheckBoxMenuItem();
         exactSearch = new javax.swing.JCheckBoxMenuItem();
+        storageSpaceUnitMenu = new javax.swing.JMenu();
         jMenu3 = new javax.swing.JMenu();
         logButton = new javax.swing.JMenuItem();
         jMenu4 = new javax.swing.JMenu();
@@ -449,6 +456,83 @@ public class MainWindow extends javax.swing.JFrame {
 
         jMenu2.add(jMenu5);
 
+        storageSpaceUnitMenu.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/settings.png"))); // NOI18N
+        storageSpaceUnitMenu.setText("Storage Space Unit");
+        try {
+            Path spaceUnitFile = Configuration.getPath().resolve("spaceUnit.txt");
+            if (Files.exists(spaceUnitFile)) {
+                String unit = Files.readString(spaceUnitFile, StandardCharsets.UTF_8).trim();
+                if (unit.equalsIgnoreCase("binary")) {
+                    UIUtils.setSpaceUnit(BinarySpaceUnit.BYTE);
+                } else if (unit.equalsIgnoreCase("decimal")) {
+                    UIUtils.setSpaceUnit(DecimalSpaceUnit.BYTE);
+                }
+            }
+        } catch (IOException ex) {
+            LOGGER.log(Level.WARNING, "Failed to read current space unit!", ex);
+        }
+
+        Runnable saveSpaceUnit = () -> {
+            try {
+                Path spaceUnitFile = Configuration.getPath().resolve("spaceUnit.txt");
+                SpaceUnit current = UIUtils.getSpaceUnit();
+                if (current instanceof BinarySpaceUnit) {
+                    Files.writeString(spaceUnitFile, "binary", StandardCharsets.UTF_8);
+                } else if (current instanceof DecimalSpaceUnit) {
+                    Files.writeString(spaceUnitFile, "decimal", StandardCharsets.UTF_8);
+                }
+            } catch (IOException ex) {
+                LOGGER.log(Level.WARNING, "Failed to write current space unit!", ex);
+            }
+        };
+
+        AtomicBoolean spaceWarningGiven = new AtomicBoolean(false);
+        Runnable spaceUnitWarning = () -> {
+            if (spaceWarningGiven.get()) {
+                return;
+            }
+            spaceWarningGiven.set(true);
+            JOptionPane.showMessageDialog(
+                MainWindow.this,
+                "It is recommended to restart to update UI elements.",
+                "Restart Recommended",
+                JOptionPane.WARNING_MESSAGE
+            );
+        };
+
+        JCheckBoxMenuItem binarySpaceUnitCheckbox = new JCheckBoxMenuItem("Binary (1024 B = 1 KiB)");
+        JCheckBoxMenuItem decimalSpaceUnitCheckbox = new JCheckBoxMenuItem("Decimal (1000 B = 1 KB)");
+
+        SpaceUnit spaceUnit = UIUtils.getSpaceUnit();
+        binarySpaceUnitCheckbox.setSelected(spaceUnit instanceof BinarySpaceUnit);
+        decimalSpaceUnitCheckbox.setSelected(spaceUnit instanceof DecimalSpaceUnit);
+
+        binarySpaceUnitCheckbox.addActionListener((evt) -> {
+            UIUtils.setSpaceUnit(BinarySpaceUnit.BYTE);
+            saveSpaceUnit.run();
+
+            binarySpaceUnitCheckbox.setSelected(true);
+            decimalSpaceUnitCheckbox.setSelected(false);
+
+            tryUpdatingSpaceUnit();
+            spaceUnitWarning.run();
+        });
+
+        decimalSpaceUnitCheckbox.addActionListener((evt) -> {
+            UIUtils.setSpaceUnit(DecimalSpaceUnit.BYTE);
+            saveSpaceUnit.run();
+
+            binarySpaceUnitCheckbox.setSelected(false);
+            decimalSpaceUnitCheckbox.setSelected(true);
+
+            tryUpdatingSpaceUnit();
+            spaceUnitWarning.run();
+        });
+
+        storageSpaceUnitMenu.add(binarySpaceUnitCheckbox);
+        storageSpaceUnitMenu.add(decimalSpaceUnitCheckbox);
+        jMenu2.add(storageSpaceUnitMenu);
+
         jMenuBar1.add(jMenu2);
 
         jMenu3.setText("View");
@@ -518,7 +602,7 @@ public class MainWindow extends javax.swing.JFrame {
         this.fileTableList.setEnabled(true);
     }
 
-    public void updateBottomInfoField() {
+    private void updateBottomInfoField() {
         String separator = "  |  ";
 
         FileEntry root = this.fileSystem.getEntry(PhantomPath.of("/"));
@@ -532,16 +616,20 @@ public class MainWindow extends javax.swing.JFrame {
         if (currentName == null) {
             currentName = "Root";
         }
-
-        this.bottomInfoField.setText(new StringBuilder()
-                .append(rootName).append(separator)
-                .append(currentName).append(separator)
-                .append(current.getFiles()).append(" Files").append(separator)
-                .append(current.getDirectories()).append(" Directories").append(separator)
-                .append(UIUtils.formatBytes(current.getSize()))
-                .toString());
+        
+        int files = current.getFiles();
+        int directories = current.getDirectories();
+        
+        String b = 
+                rootName + separator +
+                currentName + separator +
+                files + " " + (files == 1 ? "File" : "Files") + separator +
+                directories + " " + (directories == 1 ? "Directory" : "Directories") + separator +
+                UIUtils.formatBytes(current.getSize());
+        
+        this.bottomInfoField.setText(b);
     }
-
+    
     public void openFileSystem(PhantomFileSystem fs) {
         this.fileSystem = fs;
         this.rootDirectory = null;
@@ -605,9 +693,9 @@ public class MainWindow extends javax.swing.JFrame {
         this.log.setLocationRelativeTo(this);
         this.log.setVisible(true);
     }//GEN-LAST:event_logButtonActionPerformed
-
+    
     @SuppressWarnings("serial")
-    static class ThemeJMenuItem extends JMenuItem {
+    private static class ThemeJMenuItem extends JMenuItem {
 
         private final UIManager.LookAndFeelInfo lookAndFeelInfo;
 
@@ -621,7 +709,7 @@ public class MainWindow extends javax.swing.JFrame {
         }
 
     }
-
+    
     private void updateLookAndFeel() {
         SwingUtilities.updateComponentTreeUI(this);
         for (Window w : this.getOwnedWindows()) {
@@ -640,7 +728,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void setupThemes() {
         try {
-            Path themeFile = Path.of("cl_theme.txt");
+            Path themeFile = Configuration.getPath().resolve("theme.txt");
             if (Files.exists(themeFile) && Files.isRegularFile(themeFile)) {
                 String classname = Files.readString(themeFile, StandardCharsets.UTF_8).trim();
                 try {
@@ -650,11 +738,11 @@ public class MainWindow extends javax.swing.JFrame {
                         | InstantiationException
                         | IllegalAccessException
                         | UnsupportedLookAndFeelException ex) {
-                    LOGGER.log(Level.WARNING, "failed to set theme from theme file!", ex);
+                    LOGGER.log(Level.WARNING, "Failed to set theme from theme file!", ex);
                 }
             }
         } catch (IOException ex) {
-            LOGGER.log(Level.WARNING, "failed to read theme file!", ex);
+            LOGGER.log(Level.WARNING, "Failed to read theme file!", ex);
         }
 
         String currentTheme = UIManager.getLookAndFeel().getClass().getName();
@@ -689,10 +777,10 @@ public class MainWindow extends javax.swing.JFrame {
             themeButton.setIcon(this.themeIcon);
 
             try {
-                Files.writeString(Path.of("cl_theme.txt"), classname, StandardCharsets.UTF_8);
+                Files.writeString(Configuration.getPath().resolve("theme.txt"), classname, StandardCharsets.UTF_8);
             } catch (IOException ex) {
                 Toolkit.getDefaultToolkit().beep();
-                LOGGER.log(Level.WARNING, "failed to write theme file!", ex);
+                LOGGER.log(Level.WARNING, "Failed to write theme file!", ex);
             }
 
             if (!this.restartWarningEmmited) {
@@ -710,10 +798,21 @@ public class MainWindow extends javax.swing.JFrame {
                 | IllegalAccessException
                 | UnsupportedLookAndFeelException ex) {
             Toolkit.getDefaultToolkit().beep();
-            LOGGER.log(Level.WARNING, "failed to change theme!", ex);
+            LOGGER.log(Level.WARNING, "Failed to change theme!", ex);
         }
     }
-
+    
+    private void tryUpdatingSpaceUnit() {
+        if (this.fileSystem != null) {
+            if (!this.searchModeEnabled) {
+                updateFileTable();
+            } else {
+                updateSearch();
+            }
+            updateBottomInfoField();
+        }
+    }
+    
     private void createButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_createButtonActionPerformed
         NewDialog create = new NewDialog(this, true);
         create.setVisible(true);
@@ -830,7 +929,7 @@ public class MainWindow extends javax.swing.JFrame {
         boolean error = false;
         for (File sel : selected) {
             if (!sel.exists()) {
-                LOGGER.log(Level.WARNING, "file not found: {0}", sel.toString());
+                LOGGER.log(Level.WARNING, "File not found: {0}", sel.toString());
                 if (selected.length == 1) {
                     showFileNotFoundMessage(sel.toString(), true);
                     break;
@@ -841,7 +940,7 @@ public class MainWindow extends javax.swing.JFrame {
             try {
                 Desktop.getDesktop().open(sel);
             } catch (IOException | UnsupportedOperationException ex) {
-                LOGGER.log(Level.WARNING, "failed to open: " + sel.toString(), ex);
+                LOGGER.log(Level.WARNING, "Failed to open: " + sel.toString(), ex);
                 error = true;
             }
         }
@@ -1041,10 +1140,7 @@ public class MainWindow extends javax.swing.JFrame {
             return;
         }
         FileEntry[] entries = this.fileSystem.listEntries(selectedPaths);
-
-        //PathValidateDialog dialog = new PathValidateDialog(entries, base.toPath(), this, false);
-        //dialog.setLocationRelativeTo(this);
-        //dialog.setVisible(true);
+        
         ValidateDialog dialog = new ValidateDialog(this, true);
         dialog.validate(entries, base);
         dialog.setVisible(true);
@@ -1101,7 +1197,7 @@ public class MainWindow extends javax.swing.JFrame {
     private void updateCurrentPath(PhantomPath newPath) {
         updateCurrentPath(newPath, true);
     }
-
+    
     private void openLocationButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openLocationButtonActionPerformed
         PhantomPath[] selectedPaths = getSelectedPaths();
         if (selectedPaths.length == 0) {
@@ -1404,6 +1500,7 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JMenuItem rootDirectoryButton;
     private javax.swing.JButton rootInfoButton;
     private javax.swing.JTextField searchField;
+    private javax.swing.JMenu storageSpaceUnitMenu;
     private javax.swing.JMenu systemMenu;
     private javax.swing.JMenu themeMenu;
     private javax.swing.JMenuItem validateFileButton;
