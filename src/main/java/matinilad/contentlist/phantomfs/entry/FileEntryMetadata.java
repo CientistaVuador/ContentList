@@ -289,6 +289,18 @@ public class FileEntryMetadata {
                     case 't' -> {
                         c = '\t';
                     }
+                    
+                    //command line special
+                    //q for ', d for ", _ for (space)
+                    case 'q' -> {
+                        c = '\'';
+                    }
+                    case 'd' -> {
+                        c = '\"';
+                    }
+                    case '_' -> {
+                        c = ' ';
+                    }
                 }
                 b.append(c);
                 escape = false;

@@ -14,7 +14,7 @@ public class Main {
     
     public static void main(String[] args) {
         if (args == null || args.length == 0) {
-            GUInterface.run();
+            GUInterface.run(new String[] {});
             return;
         }
         String first = args[0];
@@ -31,7 +31,7 @@ public class Main {
                 TUInterface.run(System.in, System.out, Arrays.copyOfRange(args, 1, args.length));
             }
             case "-gui" -> {
-                GUInterface.run();
+                GUInterface.run(Arrays.copyOfRange(args, 1, args.length));
             }
             default -> {
                 if (!first.equals("-help")) {

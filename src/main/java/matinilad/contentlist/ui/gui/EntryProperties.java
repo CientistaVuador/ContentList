@@ -218,6 +218,7 @@ public class EntryProperties extends javax.swing.JDialog {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Properties");
+        setMinimumSize(new java.awt.Dimension(350, 350));
 
         jLabel7.setText("Name:");
 

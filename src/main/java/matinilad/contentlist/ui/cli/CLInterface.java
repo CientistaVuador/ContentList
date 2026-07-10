@@ -7,13 +7,48 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import matinilad.contentlist.ui.UIUtils;
 
 /**
  *
  * @author Cien
  */
 public class CLInterface {
-
+    
+    public static final Logger LOGGER = Logger.getLogger(CLInterface.class.getName());
+    
+    public static boolean readBooleanProperty(String property, boolean defaultValue) {
+        String value = System.getProperty(property);
+        if (value == null) {
+            return defaultValue;
+        }
+        return Boolean.parseBoolean(value);
+    }
+    
+    public static int readIntegerProperty(String property, int defaultValue, int min, int max) {
+        String value = System.getProperty(property);
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            int intValue = Integer.parseInt(value);
+            if (intValue < min) {
+                throw new NumberFormatException("Minimum Value Is: "+min);
+            }
+            if (intValue > max) {
+                throw new NumberFormatException("Maximum Value Is: "+max);
+            }
+            return intValue;
+        } catch (NumberFormatException ex) {
+            LOGGER.log(Level.WARNING, "Failed to Read Property: "+property, ex);
+        }
+        return defaultValue;
+    }
+    
+    public static final boolean ENABLE_VERBOSE_LOGGING = readBooleanProperty(UIUtils.internalName()+".cli.verbose", true);
+    
     private static void printHelp(PrintStream out) {
         out.println("Available commands:");
         out.println("-create [output csv file] [input file/directory] [input file/directory]...");
@@ -94,7 +129,7 @@ public class CLInterface {
             }
         }
 
-        CreateCommand create = new CreateCommand(out, inputFiles, outputFile);
+        CreateCommand create = new CreateCommand(inputFiles, outputFile);
         create.run();
     }
 

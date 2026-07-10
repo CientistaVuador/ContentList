@@ -592,6 +592,10 @@ public class MainWindow extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
+    public void openFile(String file) {
+        openFileSystemCSV(new File(file));
+    }
+    
     private void updateFileTable() {
         PhantomPath[] files = this.fileSystem.listFiles(this.currentPath, true);
         if (!(this.fileTableList.getModel() instanceof PhantomPathTableModel)) {
@@ -630,7 +634,7 @@ public class MainWindow extends javax.swing.JFrame {
         this.bottomInfoField.setText(b);
     }
     
-    public void openFileSystem(PhantomFileSystem fs) {
+    private void openFileSystem(PhantomFileSystem fs) {
         this.fileSystem = fs;
         this.rootDirectory = null;
         this.currentPath = PhantomPath.of("/");

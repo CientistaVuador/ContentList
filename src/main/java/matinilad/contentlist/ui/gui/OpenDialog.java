@@ -191,6 +191,9 @@ public class OpenDialog extends StatusDialog {
                             }
                         }
                     }
+                    
+                    fs.validate();
+                    
                     SwingUtilities.invokeLater(() -> {
                         setVisible(false);
                         if (this.thread != null) {

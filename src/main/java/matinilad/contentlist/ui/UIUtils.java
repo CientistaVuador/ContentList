@@ -35,8 +35,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  *
@@ -113,6 +111,7 @@ public class UIUtils {
     private static volatile String aboutText = null;
     private static volatile String nameText = null;
     private static volatile String versionText = null;
+    private static volatile String internalNameText = null;
     
     public static String about() {
         if (aboutText == null) {
@@ -133,6 +132,13 @@ public class UIUtils {
             versionText = readFile("version.txt").trim();
         }
         return versionText;
+    }
+    
+    public static String internalName() {
+        if (internalNameText == null) {
+            internalNameText = name().toLowerCase().replace(' ', '_');
+        }
+        return internalNameText;
     }
     
     private UIUtils() {
