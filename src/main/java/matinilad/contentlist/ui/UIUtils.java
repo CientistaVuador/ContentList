@@ -41,64 +41,66 @@ import java.time.format.FormatStyle;
  * @author Cien
  */
 public class UIUtils {
-    
+
     public static final long BYTE = DecimalSpaceUnit.BYTE.getSize();
-    
+
     public static final long KILOBYTE = DecimalSpaceUnit.KILOBYTE.getSize();
     public static final long MEGABYTE = DecimalSpaceUnit.MEGABYTE.getSize();
     public static final long GIGABYTE = DecimalSpaceUnit.GIGABYTE.getSize();
     public static final long TERABYTE = DecimalSpaceUnit.TERABYTE.getSize();
-    
+
     public static final long KIBIBYTE = BinarySpaceUnit.KIBIBYTE.getSize();
     public static final long MEBIBYTE = BinarySpaceUnit.MEBIBYTE.getSize();
     public static final long GIBIBYTE = BinarySpaceUnit.GIBIBYTE.getSize();
     public static final long TEBIBYTE = BinarySpaceUnit.TEBIBYTE.getSize();
-    
+
     private static SpaceUnit spaceUnit = DecimalSpaceUnit.BYTE;
-    
+
     static {
-        String unit = System.getProperty(UIUtils.internalName()+".unit");
-        if (unit.equalsIgnoreCase("binary")) {
-            spaceUnit = BinarySpaceUnit.BYTE;
-        } else if (unit.equalsIgnoreCase("decimal")) {
-            spaceUnit = DecimalSpaceUnit.BYTE;
+        String unit = System.getProperty(UIUtils.internalName() + ".unit");
+        if (unit != null) {
+            if (unit.equalsIgnoreCase("binary")) {
+                spaceUnit = BinarySpaceUnit.BYTE;
+            } else if (unit.equalsIgnoreCase("decimal")) {
+                spaceUnit = DecimalSpaceUnit.BYTE;
+            }
         }
     }
-    
+
     public static void setSpaceUnit(SpaceUnit unit) {
         spaceUnit = (unit == null ? DecimalSpaceUnit.BYTE : unit);
     }
-    
+
     public static SpaceUnit getSpaceUnit() {
         return spaceUnit;
     }
-    
+
     public static String formatBytesShort(long bytes) {
         return SpaceUnit.format(spaceUnit, bytes, true);
     }
-    
+
     public static String formatBytes(long bytes) {
-         return SpaceUnit.format(spaceUnit, bytes, false);
+        return SpaceUnit.format(spaceUnit, bytes, false);
     }
-    
+
     public static String asShortLocalizedDateTime(long utcTime) {
         return Instant
                 .ofEpochMilli(utcTime)
                 .atZone(ZoneId.systemDefault())
                 .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT));
     }
-    
+
     public static String formatPercentage(long current, long total) {
         if (total == 0) {
             return "--%";
         }
-        return String.format("%.2f", (((double)current) / total) * 100.0)+"%";
+        return String.format("%.2f", (((double) current) / total) * 100.0) + "%";
     }
-    
+
     public static String formatSpeed(long bytesPerSecond) {
-        return formatBytesShort(bytesPerSecond)+"/s";
+        return formatBytesShort(bytesPerSecond) + "/s";
     }
-    
+
     public static String stacktraceOf(Throwable t) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try (PrintStream print = new PrintStream(out, false, StandardCharsets.UTF_8)) {
@@ -106,51 +108,51 @@ public class UIUtils {
         }
         return out.toString(StandardCharsets.UTF_8);
     }
-    
+
     private static String readFile(String name) {
         try {
             try (InputStream in = UIUtils.class.getResourceAsStream(name)) {
                 return new String(in.readAllBytes(), StandardCharsets.UTF_8);
             }
         } catch (IOException ex) {
-            return "Failed to read '"+name+"'! "+ex.getLocalizedMessage();
+            return "Failed to read '" + name + "'! " + ex.getLocalizedMessage();
         }
     }
-    
+
     private static volatile String aboutText = null;
     private static volatile String nameText = null;
     private static volatile String versionText = null;
     private static volatile String internalNameText = null;
-    
+
     public static String about() {
         if (aboutText == null) {
             aboutText = readFile("about.txt");
         }
         return aboutText;
     }
-    
+
     public static String name() {
         if (nameText == null) {
             nameText = readFile("name.txt").trim();
         }
         return nameText;
     }
-    
+
     public static String version() {
         if (versionText == null) {
             versionText = readFile("version.txt").trim();
         }
         return versionText;
     }
-    
+
     public static String internalName() {
         if (internalNameText == null) {
             internalNameText = name().toLowerCase().replace(' ', '_');
         }
         return internalNameText;
     }
-    
+
     private UIUtils() {
-        
+
     }
 }
