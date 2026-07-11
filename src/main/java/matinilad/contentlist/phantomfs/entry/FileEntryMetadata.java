@@ -45,56 +45,57 @@ import matinilad.contentlist.phantomfs.PhantomPath;
  * @author Cien
  */
 public class FileEntryMetadata {
-    
+
     private static class MetadataNode {
+
         MetadataNode parent = null;
-        
+
         String name = null;
         String value = null;
-        
+
         final Map<String, MetadataNode> children = new HashMap<>();
     }
-    
+
     private final MetadataNode rootNode = new MetadataNode();
-    
+
     {
         rootNode.children.put(".", this.rootNode);
         rootNode.children.put("..", this.rootNode);
         rootNode.name = "";
         rootNode.parent = rootNode;
     }
-    
+
     public FileEntryMetadata() {
-        
+
     }
-    
+
     private MetadataNode resolve(PhantomPath path, boolean createNewNodes) {
         MetadataNode current = this.rootNode;
         for (int i = 0; i < path.getNumberOfObjects(); i++) {
             String obj = path.getObject(i);
-            
+
             MetadataNode child = current.children.get(obj);
             if (child != null) {
                 current = child;
                 continue;
             }
-            
+
             if (!createNewNodes) {
                 return null;
             }
-            
+
             child = new MetadataNode();
             child.name = obj;
             child.parent = current;
             child.children.put(".", child);
             child.children.put("..", child.parent);
-            
+
             current.children.put(child.name, child);
             current = child;
         }
         return current;
     }
-    
+
     private void cleanup(MetadataNode node) {
         if (node == null || node.parent == node) {
             return;
@@ -103,68 +104,68 @@ public class FileEntryMetadata {
             if (node.value != null || node.children.size() > 2) {
                 return;
             }
-            
+
             node.parent.children.remove(node.name);
         } while ((node = node.parent) != node.parent);
     }
-    
+
     private void checkPathNull(PhantomPath path) {
         Objects.requireNonNull(path, "path is null");
     }
-    
+
     public String readString(PhantomPath path) {
         checkPathNull(path);
-        
+
         MetadataNode resolved = resolve(path, false);
         if (resolved == null) {
             return null;
         }
         return resolved.value;
     }
-    
+
     public void writeString(PhantomPath path, String value) {
         checkPathNull(path);
-        
+
         MetadataNode resolved = resolve(path, true);
         resolved.value = value;
-        
+
         if (value == null) {
             cleanup(resolved);
         }
     }
-    
+
     public PhantomPath[] list(PhantomPath path, boolean sort, boolean includeSpecial) {
         checkPathNull(path);
-        
+
         MetadataNode node = resolve(path, false);
         if (node == null) {
             return null;
         }
-        
+
         List<PhantomPath> paths = new ArrayList<>();
-        for (Entry<String, MetadataNode> entry:node.children.entrySet()) {
+        for (Entry<String, MetadataNode> entry : node.children.entrySet()) {
             String name = entry.getKey();
             if ((name.equals(".") || name.equals("..")) && !includeSpecial) {
                 continue;
             }
-            
+
             paths.add(path.resolve(name));
         }
-        
+
         if (sort) {
             paths.sort((o1, o2) -> String.CASE_INSENSITIVE_ORDER.compare(o1.getName(), o2.getName()));
         }
-        
+
         return paths.toArray(PhantomPath[]::new);
     }
-    
+
     public PhantomPath[] list(PhantomPath path) {
         return list(path, false, false);
     }
-    
+
     public PhantomPath toRealPath(PhantomPath path) {
         checkPathNull(path);
-        
+
         MetadataNode node = resolve(path, false);
         if (node == null) {
             return null;
@@ -172,48 +173,48 @@ public class FileEntryMetadata {
         if (node.parent == node) {
             return PhantomPath.of("/");
         }
-        
+
         List<String> list = new ArrayList<>();
         do {
             list.add(node.name);
         } while ((node = node.parent) != node.parent);
-        
+
         String[] objects = new String[list.size()];
         for (int i = 0; i < objects.length; i++) {
             objects[i] = list.get((objects.length - 1) - i);
         }
-        
+
         return PhantomPath.of(objects, false);
     }
-    
+
     public boolean exists(PhantomPath path) {
         checkPathNull(path);
         return resolve(path, false) != null;
     }
-    
+
     public boolean delete(PhantomPath path) {
         checkPathNull(path);
-        
+
         MetadataNode node = resolve(path, false);
         if (node == null) {
             return false;
         }
-        
+
         node.value = null;
         node.children.clear();
         node.children.put(".", node);
         node.children.put("..", node.parent);
-        
+
         cleanup(node);
         return true;
     }
-    
+
     public void save(Writer writer) throws IOException {
         Objects.requireNonNull(writer, "writer is null");
-        
+
         save(writer, PhantomPath.of("/"), true);
     }
-    
+
     private String escape(String s) {
         StringBuilder b = new StringBuilder();
         for (int i = 0; i < s.length(); i++) {
@@ -239,7 +240,7 @@ public class FileEntryMetadata {
         }
         return b.toString();
     }
-    
+
     private boolean save(Writer writer, PhantomPath path, boolean first) throws IOException {
         String value = readString(path);
         if (value != null) {
@@ -251,24 +252,24 @@ public class FileEntryMetadata {
             writer.write(escape(value));
             first = false;
         }
-        
+
         PhantomPath[] children = list(path, true, false);
-        for (PhantomPath child:children) {
+        for (PhantomPath child : children) {
             if (!save(writer, child, first)) {
                 first = false;
             }
         }
-        
+
         return first;
     }
-    
+
     public void load(Reader reader) throws IOException {
         Objects.requireNonNull(reader, "reader is null");
-        
+
         String key = null;
         StringBuilder b = new StringBuilder();
         boolean escape = false;
-        
+
         while (true) {
             int r = reader.read();
             if (r == -1) {
@@ -288,18 +289,6 @@ public class FileEntryMetadata {
                     }
                     case 't' -> {
                         c = '\t';
-                    }
-                    
-                    //command line special
-                    //q for ', d for ", _ for (space)
-                    case 'q' -> {
-                        c = '\'';
-                    }
-                    case 'd' -> {
-                        c = '\"';
-                    }
-                    case '_' -> {
-                        c = ' ';
                     }
                 }
                 b.append(c);
@@ -328,7 +317,7 @@ public class FileEntryMetadata {
             b.append(c);
         }
     }
-    
+
     public String save() {
         try (StringWriter writer = new StringWriter()) {
             save(writer);
@@ -337,7 +326,7 @@ public class FileEntryMetadata {
             throw new UncheckedIOException(ex);
         }
     }
-    
+
     public void load(String data) {
         try (StringReader reader = new StringReader(data)) {
             load(reader);
@@ -345,11 +334,10 @@ public class FileEntryMetadata {
             throw new UncheckedIOException(ex);
         }
     }
-    
+
     @Override
     public String toString() {
         return save();
     }
-    
-    
+
 }

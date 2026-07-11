@@ -49,6 +49,12 @@ public class CLInterface {
     
     public static final boolean ENABLE_VERBOSE_LOGGING = readBooleanProperty(UIUtils.internalName()+".cli.verbose", true);
     
+    static {
+        if (!ENABLE_VERBOSE_LOGGING) {
+            LOGGER.setLevel(Level.WARNING);
+        }
+    }
+    
     private static void printHelp(PrintStream out) {
         out.println("Available commands:");
         out.println("-create [output csv file] [input file/directory] [input file/directory]...");

@@ -47,6 +47,7 @@ public class FileEntryWriter implements Closeable {
     private final Writer out;
     private final int flags;
     
+    private boolean firstLineWritten = false;
     private boolean headerWritten = false;
     
     public FileEntryWriter(Writer out, int flags) {
@@ -101,6 +102,7 @@ public class FileEntryWriter implements Closeable {
         this.out.write(b.toString());
         
         this.headerWritten = true;
+        this.firstLineWritten = true;
     }
     
     private String escapeField(String s) {
@@ -127,9 +129,11 @@ public class FileEntryWriter implements Closeable {
         if (writeHeaderCheck()) {
             writeHeader();
         }
+        if (this.firstLineWritten) {
+            this.out.write(System.lineSeparator());
+        }
         this.headerWritten = true;
-        
-        this.out.write(System.lineSeparator());
+        this.firstLineWritten = true;
         
         StringBuilder b = new StringBuilder();
         

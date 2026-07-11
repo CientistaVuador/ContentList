@@ -27,15 +27,20 @@
 package matinilad.contentlist.ui.cli;
 
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import matinilad.contentlist.phantomfs.PhantomCreator;
+import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.entry.FileEntryCreator;
 import matinilad.contentlist.phantomfs.entry.FileEntryWriter;
@@ -43,35 +48,37 @@ import matinilad.contentlist.ui.UIUtils;
 
 /**
  * TODO: test new create command
+ *
  * @author Cien
  */
 public class CreateCommand {
 
     private static final Logger LOGGER = Logger.getLogger(CreateCommand.class.getName());
-    
+
     static {
         if (!CLInterface.ENABLE_VERBOSE_LOGGING) {
             LOGGER.setLevel(Level.WARNING);
         }
     }
-    
-    public static boolean WRITE_FILES_AND_DIRECTORIES_COUNT = CLInterface.readBooleanProperty(UIUtils.internalName()+".cli.create.count", true);
-    public static boolean ENABLE_SHA256 = CLInterface.readBooleanProperty(UIUtils.internalName()+".cli.create.sha256", true);
-    public static boolean ENABLE_SAMPLE = CLInterface.readBooleanProperty(UIUtils.internalName()+".cli.create.sample", true);
-    public static int SAMPLE_SIZE = CLInterface.readIntegerProperty(UIUtils.internalName()+".cli.create.sampleSize", 32, 0, 32);
-    public static boolean ENABLE_METADATA = CLInterface.readBooleanProperty(UIUtils.internalName()+".cli.create.metadata", true);
-    public static boolean ENABLE_HEADER = CLInterface.readBooleanProperty(UIUtils.internalName()+".cli.create.header", true);
-    public static String ROOT_METADATA = System.getProperty(UIUtils.internalName()+".cli.create.root.metadata");
-    
+
+    public static final String NAMESPACE = UIUtils.internalName() + ".cli.create";
+
+    public static boolean WRITE_FILES_AND_DIRECTORIES_COUNT = CLInterface.readBooleanProperty(NAMESPACE + ".count", true);
+    public static boolean ENABLE_SHA256 = CLInterface.readBooleanProperty(NAMESPACE + ".sha256", true);
+    public static boolean ENABLE_SAMPLE = CLInterface.readBooleanProperty(NAMESPACE + ".sample", true);
+    public static int SAMPLE_SIZE = CLInterface.readIntegerProperty(NAMESPACE + ".sampleSize", 32, 0, 32);
+    public static boolean ENABLE_METADATA = CLInterface.readBooleanProperty(NAMESPACE + ".metadata", true);
+    public static boolean ENABLE_HEADER = CLInterface.readBooleanProperty(NAMESPACE + ".header", true);
+
     private final Path[] inputFiles;
     private final Path outputFile;
 
     private boolean running = false;
-    
+
     private int processedEntries = 0;
     private int failedEntries = 0;
     private int writtenEntries = 0;
-    
+
     private FileEntry lastEntry = null;
     private boolean fileSizeDisplayed = false;
 
@@ -79,10 +86,10 @@ public class CreateCommand {
         this.inputFiles = Objects.requireNonNull(inputFiles, "inputFiles is null").clone();
         this.outputFile = Objects.requireNonNull(outputFile, "outputFile is null");
     }
-    
+
     private void onStart() throws IOException {
         LOGGER.info("Initializing...");
-        
+
         LOGGER.log(Level.INFO, "Output is: {0}", this.outputFile.toString());
         LOGGER.log(Level.INFO, "Number of Inputs: {0}", this.inputFiles.length);
         for (int i = 0; i < this.inputFiles.length; i++) {
@@ -91,20 +98,20 @@ public class CreateCommand {
     }
 
     private void logEntriesCount() {
-        LOGGER.log(Level.INFO, 
+        LOGGER.log(Level.INFO,
                 "Entries (Total Processed): {0}; Entries (Failed): {1}; Entries (Written): {2}",
                 new Object[]{this.processedEntries, this.failedEntries, this.writtenEntries}
         );
     }
-    
+
     private void onFileError(Path path, IOException error) throws IOException {
         this.processedEntries++;
         this.failedEntries++;
-        
-        LOGGER.log(Level.WARNING, "Failed: "+path.toString(), error);
+
+        LOGGER.log(Level.WARNING, "Failed: " + path.toString(), error);
         logEntriesCount();
     }
-    
+
     private void onEntryStart(FileEntry entry) throws IOException {
         LOGGER.log(Level.INFO, "Now Processing: {0}", entry.getPath().toString());
         this.fileSizeDisplayed = false;
@@ -114,17 +121,29 @@ public class CreateCommand {
         this.lastEntry = entry;
         this.processedEntries++;
         this.writtenEntries++;
-        
+
         LOGGER.log(Level.INFO, "Finished: {0}", entry.getPath().toString());
         logEntriesCount();
-        
-        if (entry.getPath().isRoot() && ROOT_METADATA != null) {
-            try {
-                entry.getMetadata().load(ROOT_METADATA);
-                LOGGER.info("Custom Root Metadata Set!");
-            } catch (Throwable t) {
-                LOGGER.log(Level.WARNING, "Failed To Set Root Metadata!", t);
+
+        try {
+            String metadata = System.getProperty(NAMESPACE + ".entry.metadata." + entry.getPath().toString());
+            if (metadata != null) {
+                File metadataFile = new File(metadata);
+                if (metadataFile.isFile()) {
+                    Properties properties = new Properties();
+                    try (FileReader reader = new FileReader(metadataFile, StandardCharsets.UTF_8)) {
+                        properties.load(reader);
+                    }
+                    for (Entry<Object, Object> e:properties.entrySet()) {
+                        entry.getMetadata().writeString(PhantomPath.of(e.getKey().toString()), e.getValue().toString());
+                    }
+                    LOGGER.log(Level.INFO, "Metadata Set For {0}", entry.getPath().toString());
+                } else {
+                    throw new IOException("not a file.");
+                }
             }
+        } catch (Throwable t) {
+            LOGGER.log(Level.WARNING, "Failed To Set Metadata Of "+entry.getPath().toString(), t);
         }
     }
 
@@ -141,7 +160,7 @@ public class CreateCommand {
         LOGGER.log(Level.INFO, "Total Size: {0}", UIUtils.formatBytes(this.lastEntry.getSize()));
         LOGGER.log(Level.INFO, "Files: {0}; Directories: {1} ", new Object[]{this.lastEntry.getFiles(), this.lastEntry.getDirectories()});
     }
-    
+
     public void run() {
         if (this.running) {
             throw new RuntimeException("already running!");
@@ -166,10 +185,10 @@ public class CreateCommand {
                 flags |= FileEntryWriter.FLAG_NO_HEADER;
                 LOGGER.warning("Header is Disabled! This Will Cause Compatibility Issues!");
             }
-            
+
             try (FileEntryWriter writer = new FileEntryWriter(new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(this.outputFile), StandardCharsets.UTF_8)), flags)) {
                 onStart();
-                
+
                 PhantomCreator creator = new PhantomCreator() {
                     @Override
                     protected void onEntry(FileEntry entry) throws IOException, InterruptedException {
@@ -194,13 +213,13 @@ public class CreateCommand {
                         onEntryProgressUpdate(bytes, entry.getSize());
                     }
                 };
-                
+
                 entryCreator.setSha256Enabled(ENABLE_SHA256);
                 entryCreator.setSampleSize(SAMPLE_SIZE);
-                
+
                 creator.setFileEntryCreator(entryCreator);
                 creator.create(this.inputFiles);
-                
+
                 onFinish();
             }
         } catch (IOException | InterruptedException ex) {
