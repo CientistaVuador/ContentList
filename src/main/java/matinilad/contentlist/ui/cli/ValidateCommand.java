@@ -35,6 +35,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HexFormat;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.entry.FileEntryReader;
 import matinilad.contentlist.phantomfs.entry.FileEntryValidator;
@@ -48,127 +50,126 @@ import matinilad.contentlist.ui.UIUtils;
  */
 public class ValidateCommand {
 
-    private final PrintStream out;
+    private static final Logger LOGGER = Logger.getLogger(ValidateCommand.class.getName());
+
+    static {
+        if (!CLInterface.ENABLE_VERBOSE_LOGGING) {
+            LOGGER.setLevel(Level.WARNING);
+        }
+    }
+
     private final Path inputFile;
     private final Path rootDirectory;
 
     private boolean running = false;
-
-    private long nextUpdate = System.currentTimeMillis();
-
     private FileEntry currentEntry = null;
+    private Path currentFile = null;
     private boolean refused = false;
-    private long current = 0;
-    private long total = 0;
-    private boolean ignoreWarnings = false;
-
+    private boolean sizeDisplayed = false;
+    
     private int acceptedEntries = 0;
     private int refusedEntries = 0;
 
-    public ValidateCommand(PrintStream out, Path inputFile, Path rootDirectory) {
-        this.out = Objects.requireNonNull(out, "out is null");
+    public ValidateCommand(Path inputFile, Path rootDirectory) {
         this.inputFile = Objects.requireNonNull(inputFile, "inputFile is null");
         this.rootDirectory = Objects.requireNonNull(rootDirectory, "rootDirectory is null");;
     }
 
     private void onStart() throws IOException {
-        this.out.println("Initializing...");
+        LOGGER.info("Initializing...");
+        LOGGER.log(Level.INFO, "Input File is: {0}", this.inputFile.toString());
+        LOGGER.log(Level.INFO, "Root Directory is: {0}", this.rootDirectory.toString());
     }
-
-    private void update() {
-        if (System.currentTimeMillis() < this.nextUpdate) {
-            return;
-        }
-        this.nextUpdate = System.currentTimeMillis() + 10000;
-
-        this.out.println(this.acceptedEntries + " Accepted, " + this.refusedEntries + " Refused, " + (this.acceptedEntries + this.refusedEntries) + " Total.");
-        this.out.println(" Current Path: " + this.currentEntry.getPath().toString());
-        if (this.total == 0) {
-            this.out.println("  --% Done");
-        } else {
-            double p = ((this.current / ((double) this.total)) * 100);
-            this.out.println("  " + String.format("%.2f", p) + "% Done");
-        }
-    }
-
+    
     private void onEntryStart(FileEntry entry, Path fileToValidate) throws IOException, InterruptedException {
         this.currentEntry = entry;
+        this.currentFile = fileToValidate;
         this.refused = false;
+        this.sizeDisplayed = false;
 
-        update();
+        LOGGER.log(Level.INFO, "Now Validating: {0}; Path is: {1}", new Object[]{entry.getPath().toString(), fileToValidate.toString()});
     }
 
     private void onEntryAccepted(FileEntryValidatorReason reason, Object expected, Object found) throws IOException, InterruptedException {
-        update();
+        HexFormat hex = HexFormat.of();
+        String reasonString = "";
+        switch (reason) {
+            case EXISTENCE -> {
+                reasonString = "File Exists!";
+            }
+            case TYPE -> {
+                reasonString = "File Type is Correct; "+expected.toString();
+            }
+            case SIZE -> {
+                reasonString = "File Size is Correct; "+UIUtils.formatBytes((long) expected);
+            }
+            case SAMPLE -> {
+                reasonString = "File Sample is Correct; "+hex.formatHex((byte[]) expected);
+            }
+            case HASH -> {
+                reasonString = "File Hash is Correct; "+hex.formatHex((byte[]) expected);
+            }
+        }
+        
+        LOGGER.log(Level.INFO, "Accepted For {0}; {1}", new Object[]{reason.name(), reasonString});
     }
 
     private void onEntryRefused(FileEntryValidatorReason reason, Object expected, Object found) throws IOException, InterruptedException {
         this.refused = true;
-
-        if (this.refusedEntries > 1000 && !this.ignoreWarnings) {
-            this.out.println("Too many refused entries!");
-            this.out.println("Warnings will now be ignored.");
-            this.ignoreWarnings = true;
-        }
-        if (!this.ignoreWarnings) {
-            HexFormat hex = HexFormat.of();
-
-            this.out.println("Warning:");
-            this.out.println(" Path: " + this.currentEntry.getPath().toString());
-            this.out.println(" Was refused due to:");
-            switch (reason) {
-                case EXISTENCE -> {
-                    out.println("  File does not exists.");
-                }
-                case TYPE -> {
-                    out.println("  Expected type " + expected.toString() + ", found " + found.toString());
-                }
-                case SIZE -> {
-                    out.println("  Expected size " + UIUtils.formatBytes((long) expected) + "; found " + UIUtils.formatBytes((long) found));
-                }
-                case SAMPLE -> {
-                    out.println("  Expected sample " + hex.formatHex((byte[]) expected));
-                    out.println("            found " + hex.formatHex((byte[]) found));
-                }
-                case HASH -> {
-                    out.println("  Expected hash " + hex.formatHex((byte[]) expected));
-                    out.println("          found " + hex.formatHex((byte[]) found));
-                }
+        
+        String reasonText = "";
+        HexFormat hex = HexFormat.of();
+        switch (reason) {
+            case EXISTENCE -> {
+                reasonText = "File Does Not Exists!";
+            }
+            case TYPE -> {
+                reasonText = "Wrong Type; Expected "+expected.toString()+"; Found "+found.toString();
+            }
+            case SIZE -> {
+                reasonText = "Wrong Size; Expected "+UIUtils.formatBytes((long) expected)+"; Found "+UIUtils.formatBytes((long) found);
+            }
+            case SAMPLE -> {
+                reasonText = "Wrong Sample; Expected "+hex.formatHex((byte[]) expected)+"; Found "+hex.formatHex((byte[]) found);
+            }
+            case HASH -> {
+                reasonText = "Wrong Hash; Expected "+hex.formatHex((byte[]) expected)+"; Found "+hex.formatHex((byte[]) found);
             }
         }
-
-        update();
+        
+        LOGGER.log(Level.WARNING, "Refused! Entry {0}; File: {1}; {2}", new Object[]{this.currentEntry.getPath().toString(), this.currentFile.toString(), reasonText});
     }
 
     private void onEntryProgressUpdate(long current, long total) throws IOException, InterruptedException {
-        this.current = current;
-        this.total = total;
-
-        update();
+        if (!this.sizeDisplayed) {
+            LOGGER.log(Level.INFO, "Now Reading File: {0}; Size is {1}", new Object[]{this.currentFile.toString(), UIUtils.formatBytes(total)});
+            this.sizeDisplayed = true;
+        }
     }
-
+    
     private void onEntryFinish() throws IOException, InterruptedException {
+        String result;
         if (this.refused) {
             this.refusedEntries++;
+            result = "Failed!";
         } else {
             this.acceptedEntries++;
+            result = "Success!";
         }
-
-        update();
+        
+        LOGGER.log(Level.INFO, "Entry Finished Validating; {0}", result);
     }
 
     private void onFinish() throws IOException, InterruptedException {
-        this.out.println("Done!");
-        this.out.println(" " + this.acceptedEntries + " Accepted, " + this.refusedEntries + " Refused");
-        this.out.println("  " + (this.acceptedEntries + this.refusedEntries) + " Total");
+        LOGGER.log(Level.INFO, "Done! {0} Refused; {1} Accepted; {2} In Total.", new Object[]{this.refusedEntries, this.acceptedEntries, this.acceptedEntries+this.refusedEntries});
     }
-
-    public void run() {
+    
+    public int run() {
         if (this.running) {
             throw new RuntimeException("already running!");
         }
         this.running = true;
-
+        
         try {
             try (FileEntryReader reader = new FileEntryReader(new BufferedReader(new InputStreamReader(Files.newInputStream(this.inputFile), StandardCharsets.UTF_8)))) {
                 onStart();
@@ -209,7 +210,6 @@ public class ValidateCommand {
                     };
 
                     onEntryStart(entry, validator.getPath());
-                    onEntryProgressUpdate(0, 0);
                     FileEntryValidatorResult result = validator.validate();
                     if (!result.success()) {
                         onEntryRefused(
@@ -222,11 +222,10 @@ public class ValidateCommand {
 
                 onFinish();
             }
+            return this.refusedEntries;
         } catch (IOException | InterruptedException ex) {
-            this.out.println("Operation failed!");
-            this.out.println(ex.getLocalizedMessage());
-            ex.printStackTrace(this.out);
+            LOGGER.log(Level.SEVERE, "Operation Failed!", ex);
+            return -1;
         }
-
     }
 }

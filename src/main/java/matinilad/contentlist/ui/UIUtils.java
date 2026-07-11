@@ -56,6 +56,15 @@ public class UIUtils {
     
     private static SpaceUnit spaceUnit = DecimalSpaceUnit.BYTE;
     
+    static {
+        String unit = System.getProperty(UIUtils.internalName()+".unit");
+        if (unit.equalsIgnoreCase("binary")) {
+            spaceUnit = BinarySpaceUnit.BYTE;
+        } else if (unit.equalsIgnoreCase("decimal")) {
+            spaceUnit = DecimalSpaceUnit.BYTE;
+        }
+    }
+    
     public static void setSpaceUnit(SpaceUnit unit) {
         spaceUnit = (unit == null ? DecimalSpaceUnit.BYTE : unit);
     }

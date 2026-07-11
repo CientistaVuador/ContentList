@@ -52,7 +52,7 @@ public class Configuration {
             homePath = homePath.resolve(Path.of("AppData", "Roaming"));
         }
         
-        Path configPath = homePath.resolve(Path.of("."+UIUtils.name(), UIUtils.version()));
+        Path configPath = homePath.resolve(Path.of("."+UIUtils.internalName(), UIUtils.version()));
         Files.createDirectories(configPath);
         return configPath;
     }

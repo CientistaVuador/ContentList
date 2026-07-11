@@ -62,34 +62,39 @@ public class CLInterface {
     }
 
     public static void run(PrintStream out, String[] args) {
+        System.exit(runCLI(out, args));
+    }
+    
+    private static int runCLI(PrintStream out, String[] args) {
         Objects.requireNonNull(out, "out is null");
         if (args == null || args.length == 0) {
             out.println("No arguments!");
             printHelp(out);
-            return;
+            return -1;
         }
         switch (args[0]) {
             case "-create" -> {
-                create(out, Arrays.copyOfRange(args, 1, args.length));
+                return create(out, Arrays.copyOfRange(args, 1, args.length));
             }
             case "-validate" -> {
-                validate(out, Arrays.copyOfRange(args, 1, args.length));
+                return validate(out, Arrays.copyOfRange(args, 1, args.length));
             }
             default -> {
                 if (!args[0].equals("-help")) {
                     out.println("Invalid option: " + args[0]);
                 }
                 printHelp(out);
+                return -1;
             }
         }
     }
 
-    private static void create(PrintStream out, String[] args) {
+    private static int create(PrintStream out, String[] args) {
         if (args.length == 0) {
             out.println("No arguments!");
             out.println("Usage:");
             out.println("[output csv file] [input file/directory] [input file/directory]...");
-            return;
+            return -1;
         }
 
         Path outputFile;
@@ -99,7 +104,7 @@ public class CLInterface {
             out.println("Invalid output file!");
             out.println(ex.getLocalizedMessage());
             ex.printStackTrace(out);
-            return;
+            return -1;
         }
 
         try {
@@ -115,12 +120,12 @@ public class CLInterface {
             out.println("Failed to create output file directories!");
             out.println(ex.getLocalizedMessage());
             ex.printStackTrace(out);
-            return;
+            return -1;
         }
 
         if (Files.isDirectory(outputFile)) {
             out.println("Output file is a directory!");
-            return;
+            return -1;
         }
 
         Path[] inputFiles = new Path[args.length - 1];
@@ -131,20 +136,20 @@ public class CLInterface {
                 out.println("Invalid input file! (index " + (i - 1) + ")");
                 out.println(ex.getLocalizedMessage());
                 ex.printStackTrace(out);
-                return;
+                return -1;
             }
         }
 
         CreateCommand create = new CreateCommand(inputFiles, outputFile);
-        create.run();
+        return create.run();
     }
 
-    private static void validate(PrintStream out, String[] args) {
+    private static int validate(PrintStream out, String[] args) {
         if (args.length == 0) {
             out.println("No arguments!");
             out.println("Usage:");
             out.println("[input csv file] [root directory]");
-            return;
+            return -1;
         }
 
         Path inputFile;
@@ -154,15 +159,15 @@ public class CLInterface {
             out.println("Invalid input file!");
             out.println(ex.getLocalizedMessage());
             ex.printStackTrace(out);
-            return;
+            return -1;
         }
         if (!Files.exists(inputFile)) {
             out.println("Input file does not exists!");
-            return;
+            return -1;
         }
         if (!Files.isRegularFile(inputFile)) {
             out.println("Input file is not a file!");
-            return;
+            return -1;
         }
 
         Path rootDirectory;
@@ -175,20 +180,20 @@ public class CLInterface {
                 out.println("Invalid root directory!");
                 out.println(ex.getLocalizedMessage());
                 ex.printStackTrace(out);
-                return;
+                return -1;
             }
         }
         if (!Files.exists(rootDirectory)) {
             out.println("Root directory does not exists!");
-            return;
+            return -1;
         }
         if (!Files.isDirectory(rootDirectory)) {
             out.println("Root directory is not a directory!");
-            return;
+            return -1;
         }
-
-        ValidateCommand validate = new ValidateCommand(out, inputFile, rootDirectory);
-        validate.run();
+        
+        ValidateCommand validate = new ValidateCommand(inputFile, rootDirectory);
+        return validate.run();
     }
 
     private CLInterface() {

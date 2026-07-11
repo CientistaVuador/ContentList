@@ -47,7 +47,6 @@ import matinilad.contentlist.phantomfs.entry.FileEntryWriter;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
- * TODO: test new create command
  *
  * @author Cien
  */
@@ -66,7 +65,7 @@ public class CreateCommand {
     public static boolean WRITE_FILES_AND_DIRECTORIES_COUNT = CLInterface.readBooleanProperty(NAMESPACE + ".count", true);
     public static boolean ENABLE_SHA256 = CLInterface.readBooleanProperty(NAMESPACE + ".sha256", true);
     public static boolean ENABLE_SAMPLE = CLInterface.readBooleanProperty(NAMESPACE + ".sample", true);
-    public static int SAMPLE_SIZE = CLInterface.readIntegerProperty(NAMESPACE + ".sampleSize", 32, 0, 32);
+    public static int SAMPLE_SIZE = CLInterface.readIntegerProperty(NAMESPACE + ".sampleSize", 32, 0, 64);
     public static boolean ENABLE_METADATA = CLInterface.readBooleanProperty(NAMESPACE + ".metadata", true);
     public static boolean ENABLE_HEADER = CLInterface.readBooleanProperty(NAMESPACE + ".header", true);
 
@@ -161,7 +160,7 @@ public class CreateCommand {
         LOGGER.log(Level.INFO, "Files: {0}; Directories: {1} ", new Object[]{this.lastEntry.getFiles(), this.lastEntry.getDirectories()});
     }
 
-    public void run() {
+    public int run() {
         if (this.running) {
             throw new RuntimeException("already running!");
         }
@@ -205,7 +204,6 @@ public class CreateCommand {
                     @Override
                     protected void onEntryCreated(FileEntry entry) throws IOException, InterruptedException {
                         onEntryStart(entry);
-                        onEntryProgressUpdate(0, 0);
                     }
 
                     @Override
@@ -222,8 +220,10 @@ public class CreateCommand {
 
                 onFinish();
             }
+            return this.failedEntries;
         } catch (IOException | InterruptedException ex) {
             LOGGER.log(Level.SEVERE, "Operation Failed!", ex);
+            return -1;
         }
     }
 

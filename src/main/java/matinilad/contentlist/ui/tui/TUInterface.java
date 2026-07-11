@@ -144,7 +144,7 @@ public class TUInterface {
     private static void runTerminal(InputStream in, PrintStream out, PhantomFileSystem fs) {
         Scanner scanner = new Scanner(in);
 
-        out.println("Content List File System Terminal v1.0");
+        out.println(UIUtils.name()+" Terminal v"+UIUtils.version());
         FileEntry rootEntry = readEntry(out, fs, PhantomPath.of("/"));
         if (rootEntry != null) {
             out.println(UIUtils.formatBytes(rootEntry.getSize()));
