@@ -17,7 +17,7 @@ import matinilad.contentlist.phantomfs.entry.FileEntryCreator;
  * @author Cien
  */
 public abstract class PhantomCreator {
-    
+
     private FileEntryCreator fileEntryCreator = new FileEntryCreator();
 
     public PhantomCreator() {
@@ -34,7 +34,7 @@ public abstract class PhantomCreator {
         }
         this.fileEntryCreator = fileEntryCreator;
     }
-    
+
     protected boolean onShouldInterrupt() throws IOException, InterruptedException {
         return Thread.interrupted();
     }
@@ -65,7 +65,7 @@ public abstract class PhantomCreator {
     private List<Path> sort(List<Path> toProcess) {
         List<Path> directories = new ArrayList<>();
         List<Path> files = new ArrayList<>();
-        
+
         for (Path path : toProcess) {
             if (Files.isDirectory(path)) {
                 directories.add(path);
@@ -76,7 +76,7 @@ public abstract class PhantomCreator {
 
         nameSort(directories);
         nameSort(files);
-        
+
         List<Path> sorted = new ArrayList<>();
         sorted.addAll(directories);
         sorted.addAll(files);
@@ -92,25 +92,25 @@ public abstract class PhantomCreator {
             }
 
             onShouldFileBeRejected(file);
-            
+
             FileEntry entry = getFileEntryCreator().create(file, depth);
-            
+
             if (entry.getType().equals(FileEntryType.DIRECTORY)) {
                 parent.setDirectories(parent.getDirectories() + 1);
             } else {
                 parent.setFiles(parent.getFiles() + 1);
             }
-            
+
             if (entry.getType().equals(FileEntryType.DIRECTORY)) {
                 List<Path> children = sort(Files.list(file).toList());
                 for (Path child : children) {
                     createRecursively(entry, child, depth - 1);
                 }
-                
+
                 parent.setDirectories(parent.getDirectories() + entry.getDirectories());
                 parent.setFiles(parent.getFiles() + entry.getFiles());
             }
-            
+
             parent.setSize(parent.getSize() + entry.getSize());
 
             onEntry(entry);
@@ -118,7 +118,7 @@ public abstract class PhantomCreator {
             onFileRejected(file, ex);
         }
     }
-    
+
     private List<Path> validateAndSort(Path[] files) throws InterruptedException, IOException {
         List<Path> fileList = new ArrayList<>();
         Set<String> names = new HashSet<>();
@@ -129,25 +129,36 @@ public abstract class PhantomCreator {
                 onFileRejected(p, ex);
                 continue;
             }
-            
+
             Path fileName = p.getFileName();
             if (fileName == null) {
-                onFileRejected(p, new IOException("file is root"));
+                if (!Files.isDirectory(p)) {
+                    onFileRejected(p, new IOException("file is root and it's not a directory!"));
+                    continue;
+                }
+                for (Path e : Files.list(p).toList()) {
+                    Path name = e.getFileName();
+                    if (!names.add(name.toString())) {
+                        onFileRejected(e, new IOException("file is duplicated"));
+                        continue;
+                    }
+                    fileList.add(e);
+                }
                 continue;
             }
             if (!names.add(fileName.toString())) {
                 onFileRejected(p, new IOException("file is duplicated"));
                 continue;
             }
-            
+
             fileList.add(p);
         }
         return sort(fileList);
     }
-    
+
     public void create(Path... files) throws IOException, InterruptedException {
         List<Path> fileList = validateAndSort(files);
-        
+
         FileEntry root = getFileEntryCreator().create(null, 0);
         root.setCreated(System.currentTimeMillis());
         for (Path p : fileList) {
