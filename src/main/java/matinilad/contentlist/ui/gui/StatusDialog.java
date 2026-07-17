@@ -30,9 +30,12 @@ import java.awt.Toolkit;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.logging.ErrorManager;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -42,6 +45,7 @@ import java.util.logging.SimpleFormatter;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFileChooser;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JSeparator;
 import javax.swing.JTextField;
@@ -150,9 +154,9 @@ public class StatusDialog extends javax.swing.JDialog {
 
         }
     };
-
-    private long progressTime = System.nanoTime();
-    private float currentProgress = 0f;
+    
+    private float progress = 0f;
+    private Future<?> globalStatusUpdate = null;
 
     public StatusDialog(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
@@ -429,6 +433,45 @@ public class StatusDialog extends javax.swing.JDialog {
     public JTextField getCurrentItemName() {
         return currentItemName;
     }
+    
+    public void setProgress(float progress) {
+        if (!Float.isFinite(progress)) {
+            this.progressBar.setIndeterminate(true);
+            this.progressLabel.setText("--");
+            this.progress = progress;
+            return;
+        }
+        
+        if (this.progressBar.isIndeterminate()) {
+            this.progressBar.setIndeterminate(false);
+        }
+        
+        final int min = this.progressBar.getMinimum();
+        final int max = this.progressBar.getMaximum();
+        
+        int progressInteger;
+        if (progress >= 1f) {
+            progressInteger = max;
+        } else if (progress <= 0f) {
+            progressInteger = min;
+        } else {
+            progressInteger = (int) (progress * (max - min));
+            progressInteger = Math.min(Math.max(progressInteger + min, min), max);
+        }
+        
+        this.progressBar.setValue(progressInteger);
+        this.progressLabel.setText(String.format("%.2f", Math.min(Math.max(progress * 100f, 0f), 100f))+"%");
+        
+        this.progress = progress;
+    }
+
+    public float getProgress() {
+        return progress;
+    }
+    
+    public JLabel getEstimatedTime() {
+        return estimatedTime;
+    }
 
     public JTextField getCurrentItemStatus() {
         return currentItemStatus;
@@ -438,54 +481,25 @@ public class StatusDialog extends javax.swing.JDialog {
         return currentGlobalStatus;
     }
 
-    public long getProgressTime() {
-        return progressTime;
-    }
-
-    public void resetProgressTime() {
-        this.progressTime = System.nanoTime();
-    }
-
-    public void setCurrentProgress(float progress) {
-        progress = Math.min(Math.max(progress, 0f), 1f);
-        this.currentProgress = progress;
-
-        this.progressBar.setValue((int) (progress * this.progressBar.getMaximum()));
-        this.progressLabel.setText(String.format("%.2f%%", progress * 100f));
-
-        if (progress < 0.00001f) {
-            this.estimatedTime.setText("waiting");
-        } else {
-            int seconds = (int) ((((System.nanoTime() - getProgressTime()) / 1E9d) / progress) * (1f - progress));
-            int hours = seconds / 3600;
-            seconds -= hours * 3600;
-            int minutes = seconds / 60;
-            seconds -= minutes * 60;
-
-            StringBuilder b = new StringBuilder();
-            if (hours != 0) {
-                b.append(hours).append("h ");
-            }
-            if (minutes != 0) {
-                b.append(minutes).append("m ");
-            }
-            b.append(seconds).append("s remaining");
-
-            this.estimatedTime.setText(b.toString());
+    public void updateCurrentGlobalStatusAsync(String text, boolean force) {
+        Runnable task = () -> {
+            getCurrentGlobalStatus().setText(text);
+        };
+        
+        if (force) {
+            SwingUtilities.invokeLater(task);
+            return;
+        }
+        
+        if (this.globalStatusUpdate == null || this.globalStatusUpdate.isDone()) {
+            this.globalStatusUpdate = CompletableFuture.runAsync(() -> {
+                try {
+                    SwingUtilities.invokeAndWait(task);
+                } catch (InterruptedException | InvocationTargetException ex) {}
+            });
         }
     }
-
-    public float getCurrentProgress() {
-        return currentProgress;
-    }
-
-    public void updateAndResetTime(String itemName) {
-        getCurrentItemName().setText(itemName);
-        getCurrentItemStatus().setText("");
-        resetProgressTime();
-        setCurrentProgress(0f);
-    }
-
+    
     public JButton getCancelButton() {
         return cancelButton;
     }

@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -56,7 +57,6 @@ import matinilad.contentlist.phantomfs.PhantomCreator;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.entry.FileEntryCreator;
 import matinilad.contentlist.phantomfs.entry.FileEntryMetadata;
-import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.phantomfs.entry.FileEntryWriter;
 import matinilad.contentlist.ui.UIUtils;
 
@@ -520,15 +520,16 @@ public class NewDialog extends javax.swing.JDialog {
             String name, String author, String description
     ) throws IOException, InterruptedException {
         LOGGER.log(Level.INFO, "creating list on {0} for {1}",
-                new Object[] {
+                new Object[]{
                     outputFile.toString(),
                     inputFiles.stream().map(File::toString).collect(Collectors.joining(File.pathSeparator))
                 });
+        StatusDialogFileItem fileStatus = new StatusDialogFileItem(progressBar);
+        fileStatus.reset();
+        fileStatus.updateDialog(true);
+
         try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(outputFile)), StandardCharsets.UTF_8), flags)) {
             PhantomCreator creator = new PhantomCreator() {
-                private long entriesWritten = 0;
-                private long totalSize = 0;
-                
                 @Override
                 protected void onShouldFileBeRejected(Path file) throws IOException, InterruptedException {
                     if (file.toFile().equals(outputFile)) {
@@ -545,30 +546,22 @@ public class NewDialog extends javax.swing.JDialog {
                 protected void onEntry(FileEntry entry) throws IOException, InterruptedException {
                     writer.writeFileEntry(entry);
                     LOGGER.log(Level.INFO, "written {0}", entry.getPath().toString());
-                    this.entriesWritten++;
-                    if (FileEntryType.FILE.equals(entry.getType())) {
-                        this.totalSize += entry.getSize();
-                    }
-                    
-                    long e = this.entriesWritten;
-                    long s = this.totalSize;
-                    SwingUtilities.invokeLater(() -> {
-                        progressBar.getCurrentGlobalStatus().setText(
-                                e + " Entries with " + UIUtils.formatBytesShort(s) + " in total");
-                    });
+
+                    progressBar.updateCurrentGlobalStatusAsync(
+                            getNumberOfEntries() + " Entries with " + UIUtils.formatBytesShort(getTotalSize()) + " in total",
+                            false
+                    );
                 }
             };
             FileEntryCreator fileEntryCreator = new FileEntryCreator() {
-                private final FileTransferStatus transferStatus = new FileTransferStatus();
-
                 @Override
                 protected void onEntryCreated(FileEntry entry) throws IOException, InterruptedException {
                     LOGGER.log(Level.INFO, "created {0}", entry.getPath().toString());
-                    this.transferStatus.setSize(0);
-                    SwingUtilities.invokeLater(() -> {
-                        progressBar.updateAndResetTime(entry.getPath().toString());
-                    });
-                    
+
+                    fileStatus.reset();
+                    fileStatus.setFileName(entry.getPath().toString());
+                    fileStatus.updateDialog(entry.getPath().isRoot());
+
                     if (entry.getPath().isRoot()) {
                         FileEntryMetadata metadata = entry.getMetadata();
                         metadata.writeString(FileEntry.METADATA_NAME, name);
@@ -580,17 +573,11 @@ public class NewDialog extends javax.swing.JDialog {
                 @Override
                 protected void onEntryProgress(FileEntry entry, long bytes) throws IOException, InterruptedException {
                     if (entry.getSize() != 0) {
-                        if (this.transferStatus.getSize() == 0) {
-                            this.transferStatus.setSize(entry.getSize());
+                        if (fileStatus.getFileSize() == 0) {
+                            fileStatus.setFileSize(entry.getSize());
                         }
-                        this.transferStatus.update(bytes - this.transferStatus.getCount());
-                        
-                        float progress = this.transferStatus.getProgress();
-                        String status = this.transferStatus.toString();
-                        SwingUtilities.invokeLater(() -> {
-                            progressBar.setCurrentProgress(progress);
-                            progressBar.getCurrentItemStatus().setText(status);
-                        });
+                        fileStatus.setFileProgress(bytes);
+                        fileStatus.updateDialog(false);
                     }
                 }
             };
@@ -600,9 +587,14 @@ public class NewDialog extends javax.swing.JDialog {
             } else {
                 fileEntryCreator.setSampleSize(0);
             }
-            
+
             creator.setFileEntryCreator(fileEntryCreator);
             creator.create(inputFiles.stream().map(File::toPath).toArray(Path[]::new));
+
+            progressBar.updateCurrentGlobalStatusAsync(
+                    creator.getNumberOfEntries() + " Entries with " + UIUtils.formatBytesShort(creator.getTotalSize()) + " in total",
+                    true
+            );
         }
     }
 
@@ -631,9 +623,9 @@ public class NewDialog extends javax.swing.JDialog {
         StatusDialog dialog = new StatusDialog(this, true);
         dialog.setTitle(output.toString());
         LOGGER.addHandler(dialog.getLoggerHandler());
-        
+
         int flags = 0;
-        
+
         if (this.noFilesAndDirectoriesButton.isSelected()) {
             flags |= FileEntryWriter.FLAG_NO_FILES_AND_DIRECTORIES;
         }
@@ -646,14 +638,15 @@ public class NewDialog extends javax.swing.JDialog {
         if (this.noMetadataButton.isSelected()) {
             flags |= FileEntryWriter.FLAG_NO_METADATA;
         }
-        
+
         int finalFlags = flags;
         int sampleSize = (int) this.fileSampleSizeSpinner.getValue();
-        
+
         String name = this.metadataNameField.getText();
         String author = this.metadataAuthorField.getText();
         String description = this.metadataDescriptionArea.getText();
-        
+
+        AtomicBoolean canceled = new AtomicBoolean(false);
         Thread th = new Thread(() -> {
             try {
                 create(dialog, output, inputFiles, finalFlags, sampleSize, name, author, description);
@@ -669,18 +662,25 @@ public class NewDialog extends javax.swing.JDialog {
                 LOGGER.info("Finished!");
                 LOGGER.removeHandler(dialog.getLoggerHandler());
                 dialog.getCancelButton().setEnabled(false);
-                dialog.updateAndResetTime("Finished!");
+                dialog.getCurrentItemName().setText("Finished");
+                dialog.getCurrentItemStatus().setText("");
+                dialog.setProgress(0f);
                 Toolkit.getDefaultToolkit().beep();
             });
         });
         dialog.getCancelButton().addActionListener((e) -> {
             th.interrupt();
+            dialog.setVisible(false);
+            dialog.dispose();
+            canceled.set(true);
         });
         dialog.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                NewDialog.this.setVisible(false);
-                NewDialog.this.dispose();
+                if (!canceled.get()) {
+                    NewDialog.this.setVisible(false);
+                    NewDialog.this.dispose();
+                }
             }
         });
         th.setDaemon(true);

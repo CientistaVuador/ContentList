@@ -19,6 +19,8 @@ import matinilad.contentlist.phantomfs.entry.FileEntryCreator;
 public abstract class PhantomCreator {
 
     private FileEntryCreator fileEntryCreator = new FileEntryCreator();
+    private long numberOfEntries = 0;
+    private long totalSize = 0;
 
     public PhantomCreator() {
 
@@ -33,6 +35,14 @@ public abstract class PhantomCreator {
             fileEntryCreator = new FileEntryCreator();
         }
         this.fileEntryCreator = fileEntryCreator;
+    }
+
+    public long getNumberOfEntries() {
+        return numberOfEntries;
+    }
+
+    public long getTotalSize() {
+        return totalSize;
     }
 
     protected boolean onShouldInterrupt() throws IOException, InterruptedException {
@@ -112,7 +122,12 @@ public abstract class PhantomCreator {
             }
 
             parent.setSize(parent.getSize() + entry.getSize());
-
+            
+            this.numberOfEntries++;
+            if (FileEntryType.FILE.equals(entry.getType())) {
+                this.totalSize += entry.getSize();
+            }
+            
             onEntry(entry);
         } catch (IOException ex) {
             onFileRejected(file, ex);
@@ -157,6 +172,9 @@ public abstract class PhantomCreator {
     }
 
     public void create(Path... files) throws IOException, InterruptedException {
+        this.numberOfEntries = 0;
+        this.totalSize = 0;
+
         List<Path> fileList = validateAndSort(files);
 
         FileEntry root = getFileEntryCreator().create(null, 0);
@@ -165,6 +183,8 @@ public abstract class PhantomCreator {
             createRecursively(root, p, 0);
         }
         root.setModified(System.currentTimeMillis());
+        
+        this.numberOfEntries++;
         onEntry(root);
     }
 

@@ -83,6 +83,31 @@ public class UIUtils {
         return SpaceUnit.format(spaceUnit, bytes, false);
     }
 
+    public static String formatTimeCountdown(long seconds) {
+        long days = seconds / 86400;
+        seconds -= days * 86400;
+        
+        long hours = seconds / 3600;
+        seconds -= hours * 3600;
+        
+        long minutes = seconds / 60;
+        seconds -= minutes * 60;
+        
+        StringBuilder b = new StringBuilder();
+        if (days != 0) {
+            b.append(days).append("d ");
+        }
+        if (hours != 0) {
+            b.append(hours).append("h ");
+        }
+        if (minutes != 0) {
+            b.append(minutes).append("m ");
+        }
+        b.append(seconds).append("s");
+        
+        return b.toString();
+    }
+
     public static String asShortLocalizedDateTime(long utcTime) {
         return Instant
                 .ofEpochMilli(utcTime)

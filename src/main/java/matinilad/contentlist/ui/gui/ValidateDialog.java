@@ -31,19 +31,15 @@ import java.awt.Frame;
 import java.awt.Toolkit;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.HexFormat;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
-import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.phantomfs.entry.FileEntryValidator;
-import matinilad.contentlist.phantomfs.entry.FileEntryValidatorReason;
 import matinilad.contentlist.phantomfs.entry.FileEntryValidatorResult;
 import matinilad.contentlist.ui.UIUtils;
 
@@ -103,15 +99,17 @@ public class ValidateDialog extends StatusDialog {
         LOGGER.log(Level.INFO, "Number of entries: {0}", entries.length);
         LOGGER.log(Level.INFO, "Root directory: {0}", rootDirectory.toString());
 
+        StatusDialogFileItem item = new StatusDialogFileItem(this);
+
         setTitle(rootDirectory.toString());
-        updateAndResetTime("");
         getCurrentGlobalStatus().setText("0 Success, 0 Failed (0 of " + entries.length + " total)");
         getCancelButton().setEnabled(true);
+        item.updateDialog(true);
 
         this.thread = new Thread(() -> {
             try {
                 try {
-                    validateEntries(entries, rootDirectory);
+                    validateEntries(item, entries, rootDirectory);
                 } catch (InterruptedException ex) {
                     LOGGER.info("Canceled");
                 }
@@ -122,59 +120,41 @@ public class ValidateDialog extends StatusDialog {
                 });
             }
         });
+        this.thread.setDaemon(true);
         this.thread.start();
     }
 
-    private void validateEntries(FileEntry[] entries, Path root) throws InterruptedException {
+    private void validateEntries(StatusDialogFileItem item, FileEntry[] entries, Path root) throws InterruptedException {
         int success = 0;
         int failed = 0;
-        for (FileEntry entry : entries) {
+        for (int i = 0; i < entries.length; i++) {
             if (Thread.interrupted()) {
                 throw new InterruptedException();
             }
-            
-            String entryPathString = entry.getPath().toString();
-            
-            LOGGER.log(Level.INFO, "Now validating: {0}", entryPathString);
 
-            SwingUtilities.invokeLater(() -> {
-                updateAndResetTime(entry.getPath().toString());
-                if (!entry.getType().equals(FileEntryType.FILE)) {
-                    setCurrentProgress(1f);
-                }
-            });
+            FileEntry entry = entries[i];
+            final int entryIndex = i;
+
+            item.reset();
+
+            String entryPathString = entry.getPath().toString();
+            item.setFileName(entryPathString);
+
+            LOGGER.log(Level.INFO, "Now validating: {0}", entryPathString);
+            item.updateDialog(false);
 
             try {
                 FileEntryValidator validator = new FileEntryValidator(root, entry) {
-                    private long fileSize = 0;
-                    private Future<?> nextUpdateTask = null;
-
                     @Override
                     protected void onFileSize(long bytes) throws IOException, InterruptedException {
-                        this.fileSize = bytes;
+                        item.setFileSize(bytes);
                     }
 
                     @Override
                     protected void onProgressUpdate(long bytes) throws IOException, InterruptedException {
-                        float progress = 1f;
-                        if (this.fileSize > 0) {
-                            progress = (float) (((double) bytes) / this.fileSize);
-                        }
-                        float finalProgress = progress;
-
-                        if (this.nextUpdateTask == null || this.fileSize == bytes || this.nextUpdateTask.isDone()) {
-                            this.nextUpdateTask = CompletableFuture.runAsync(() -> {
-                                try {
-                                    SwingUtilities.invokeAndWait(() -> {
-                                        setCurrentProgress(finalProgress);
-                                    });
-                                } catch (InterruptedException | InvocationTargetException ex) {
-                                    LOGGER.log(Level.WARNING, "Error at update task", ex);
-                                }
-                            });
-                        }
+                        item.setFileProgress(bytes);
+                        item.updateDialog(false);
                     }
-
                 };
                 FileEntryValidatorResult result = validator.validate();
 
@@ -204,12 +184,8 @@ public class ValidateDialog extends StatusDialog {
                         }
                     }
                 }
-                
-                int finalSuccess = success;
-                int finalFailed = failed;
-                SwingUtilities.invokeLater(() -> {
-                    getCurrentGlobalStatus().setText(finalSuccess + " Success, " + finalFailed + " Failed (" + (finalSuccess + finalFailed) + " of " + entries.length + " total)");
-                });
+
+                updateCurrentGlobalStatusAsync(success + " Success, " + failed + " Failed (" + (success + failed) + " of " + entries.length + " total)", entryIndex == (entries.length - 1));
             } catch (Throwable t) {
                 if (t instanceof InterruptedException interruptedException) {
                     throw interruptedException;
@@ -218,13 +194,37 @@ public class ValidateDialog extends StatusDialog {
             }
         }
 
+        int finalFailed = failed;
+        int finalSuccess = success;
+
         SwingUtilities.invokeLater(() -> {
             getCancelButton().setEnabled(false);
             getCurrentItemName().setText("Done!");
             getCurrentItemStatus().setText("");
-            setCurrentProgress(0f);
-            
+            setProgress(0f);
+
             Toolkit.getDefaultToolkit().beep();
+
+            if (finalFailed == 0) {
+                setVisible(false);
+                dispose();
+
+                if (finalSuccess == 1) {
+                    JOptionPane.showMessageDialog(
+                            getParent(),
+                            "Entry "+entries[0].getPath().toString()+" validated with success!",
+                            "Success!",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+                } else {
+                    JOptionPane.showMessageDialog(
+                            getParent(),
+                            "All entries (" + finalSuccess + ") validated with success!",
+                            "Success!",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+                }
+            }
         });
     }
 }

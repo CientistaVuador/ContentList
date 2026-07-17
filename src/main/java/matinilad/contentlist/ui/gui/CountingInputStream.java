@@ -29,39 +29,41 @@ package matinilad.contentlist.ui.gui;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Objects;
 
 /**
  *
  * @author Cien
  */
-public class StatusInputStream extends FilterInputStream {
-
-    private final FileTransferStatus status;
-
-    public StatusInputStream(FileTransferStatus status, InputStream in) {
-        super(Objects.requireNonNull(in, "in is null"));
-        this.status = Objects.requireNonNull(status, "status is null");
-    }
+public class CountingInputStream extends FilterInputStream {
     
-    public FileTransferStatus getStatus() {
-        return status;
+    private long count = 0;
+    
+    public CountingInputStream(InputStream in) {
+        super(in);
+    }
+
+    public long getCount() {
+        return count;
+    }
+
+    protected void updateCount(long toAdd) {
+        this.count += toAdd;
     }
     
     @Override
     public int read() throws IOException {
-        int r = super.read();
-        if (r != -1) {
-            getStatus().update(1);
+        int b = super.read();
+        if (b != -1) {
+            updateCount(1);
         }
-        return r;
+        return b;
     }
 
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
         int r = super.read(b, off, len);
         if (r != -1) {
-            getStatus().update(r);
+            updateCount(r);
         }
         return r;
     }

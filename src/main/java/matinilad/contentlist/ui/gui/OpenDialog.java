@@ -36,18 +36,14 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import matinilad.contentlist.phantomfs.PhantomFileSystem;
-import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.entry.FileEntryReader;
 
@@ -146,54 +142,66 @@ public class OpenDialog extends StatusDialog {
 
         String filePath = getFilePath(obj);
         LOGGER.log(Level.INFO, "Now reading: {0}", filePath);
-
+        
         setTitle(filePath);
-        updateAndResetTime(filePath);
+        getCurrentItemName().setText("");
+        setProgress(0f);
+        getCurrentItemStatus().setText("");
+        getEstimatedTime().setText("");
         getCurrentGlobalStatus().setText("");
+        
         getCancelButton().setEnabled(true);
+        
+        StatusDialogFileItem fileItem = new StatusDialogFileItem(this);
 
         this.thread = new Thread(() -> {
             try {
                 try {
-                    FileTransferStatus transferStatus = new FileTransferStatus();
-                    transferStatus.setSize(getFileSize(obj));
-
-                    Future<?> updateTask = null;
-
+                    fileItem.reset();
+                    fileItem.setFileSize(getFileSize(obj));
+                    
                     PhantomFileSystem fs = new PhantomFileSystem();
-                    try (FileEntryReader reader = new FileEntryReader(new BufferedReader(new InputStreamReader(new StatusInputStream(transferStatus, getFileStream(obj)), StandardCharsets.UTF_8)))) {
-                        int entryCount = 0;
-
-                        FileEntry entry;
-                        while ((entry = reader.readEntry()) != null) {
-                            if (Thread.interrupted()) {
-                                throw new InterruptedException();
+                    try (InputStream fileStream = getFileStream(obj)) {
+                        try (CountingInputStream countingStream = new CountingInputStream(fileStream) {
+                            @Override
+                            protected void updateCount(long toAdd) {
+                                super.updateCount(toAdd);
+                                
+                                fileItem.setFileProgress(fileItem.getFileProgress() + toAdd);
+                                fileItem.updateDialog(false);
                             }
+                        }) {
+                            try (InputStreamReader reader = new InputStreamReader(countingStream, StandardCharsets.UTF_8)) {
+                                try (BufferedReader bufferedReader = new BufferedReader(reader)) {
+                                    try (FileEntryReader entryReader = new FileEntryReader(bufferedReader)) {
+                                        int entryCount = 0;
+                                        
+                                        FileEntry entry;
+                                        while ((entry = entryReader.readEntry()) != null) {
+                                            if (Thread.interrupted()) {
+                                                throw new InterruptedException();
+                                            }
 
-                            fs.writeEntry(entry);
-                            entryCount++;
-
-                            if (updateTask == null || updateTask.isDone()) {
-                                final float currentProgress = transferStatus.getProgress();
-                                final PhantomPath currentEntryPath = entry.getPath();
-                                final int currentEntryCount = entryCount;
-                                updateTask = CompletableFuture.runAsync(() -> {
-                                    try {
-                                        SwingUtilities.invokeAndWait(() -> {
-                                            setCurrentProgress(currentProgress);
-                                            getCurrentItemStatus().setText(currentEntryPath.toString());
-                                            getCurrentGlobalStatus().setText(currentEntryCount + (currentEntryCount == 1 ? " Entry " : " Entries"));
-                                        });
-                                    } catch (InterruptedException | InvocationTargetException ex) {
-                                        LOGGER.log(Level.WARNING, "Error at update task", ex);
+                                            fs.writeEntry(entry);
+                                            entryCount++;
+                                            
+                                            fileItem.setFileName(entry.getPath().toString());
+                                            
+                                            updateCurrentGlobalStatusAsync(entryCount + (entryCount == 1 ? " Entry " : " Entries"), false);
+                                            fileItem.updateDialog(false);
+                                        }
                                     }
-                                });
+                                }
                             }
                         }
                     }
-                    
+
                     fs.validate();
                     
+                    fileItem.setFileName("Done.");
+                    fileItem.setFileProgress(fileItem.getFileSize());
+                    fileItem.updateDialog(true);
+
                     SwingUtilities.invokeLater(() -> {
                         setVisible(false);
                         if (this.thread != null) {
@@ -223,6 +231,7 @@ public class OpenDialog extends StatusDialog {
                 });
             }
         });
+        this.thread.setDaemon(true);
         this.thread.start();
     }
 }
