@@ -313,6 +313,7 @@ public class PhantomFileSystem {
         return entries.toArray(FileEntry[]::new);
     }
 
+    //TODO: less chaotic return results
     private void search(
             List<PhantomPath> output,
             InternalFile f, String name, boolean caseSensitive, boolean exactName,

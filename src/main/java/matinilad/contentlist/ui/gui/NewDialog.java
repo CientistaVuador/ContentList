@@ -582,7 +582,7 @@ public class NewDialog extends javax.swing.JDialog {
                 }
             };
             fileEntryCreator.setSha256Enabled((flags & FileEntryWriter.FLAG_NO_SHA256) == 0);
-            if ((flags & FileEntryWriter.FLAG_NO_SAMPLE) != 0) {
+            if ((flags & FileEntryWriter.FLAG_NO_SAMPLE) == 0) {
                 fileEntryCreator.setSampleSize(sampleSize);
             } else {
                 fileEntryCreator.setSampleSize(0);

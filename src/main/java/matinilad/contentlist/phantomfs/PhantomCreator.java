@@ -139,7 +139,8 @@ public abstract class PhantomCreator {
         Set<String> names = new HashSet<>();
         for (Path p : files) {
             try {
-                p = p.toRealPath();
+                Path realPath = p.toRealPath();
+                p = realPath;
             } catch (IOException ex) {
                 onFileRejected(p, ex);
                 continue;

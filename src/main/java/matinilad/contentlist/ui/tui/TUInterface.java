@@ -20,6 +20,10 @@ import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.phantomfs.entry.FileEntryReader;
 import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.ui.UIUtils;
+import matinilad.contentlist.ui.tui.commands.AboutCommand;
+import matinilad.contentlist.ui.tui.commands.ChangeDirectoryCommand;
+import matinilad.contentlist.ui.tui.commands.ListCommand;
+import matinilad.contentlist.ui.tui.commands.SearchCommand;
 
 /**
  *
@@ -144,7 +148,7 @@ public class TUInterface {
     private static void runTerminal(InputStream in, PrintStream out, PhantomFileSystem fs) {
         Scanner scanner = new Scanner(in);
 
-        out.println(UIUtils.name()+" Terminal v"+UIUtils.version());
+        out.println(UIUtils.name() + " Terminal v" + UIUtils.version());
         FileEntry rootEntry = readEntry(out, fs, PhantomPath.of("/"));
         if (rootEntry != null) {
             out.println(UIUtils.formatBytes(rootEntry.getSize()));
@@ -153,7 +157,19 @@ public class TUInterface {
         }
         out.println("Welcome!");
 
-        PhantomPath workDirectory = PhantomPath.of("/");
+        TUIState state = new TUIState();
+        state.setFileSystem(fs);
+
+        Commands commands = new Commands();
+        
+        commands.addCommand(new ListCommand());
+        commands.addCommand(new ChangeDirectoryCommand());
+        commands.addCommand(new AboutCommand());
+        
+        commands.addCommand(new SearchCommand());
+        commands.addCommand(new SearchCommand.CaseSensitive());
+        commands.addCommand(new SearchCommand.Exact());
+        commands.addCommand(new SearchCommand.ExactCaseSensitive());
 
         while (true) {
             out.print("]");
@@ -175,122 +191,26 @@ public class TUInterface {
             } else {
                 argument = null;
             }
-
+            
             switch (command) {
-                case "ls" -> {
-                    if (argument != null) {
-                        out.println("Tip: ls has no arguments, use cd for navigation.");
-                    }
-                    PhantomPath[] files = fs.listFiles(workDirectory, true);
-                    for (PhantomPath file : files) {
-                        out.print(file.relative(workDirectory).toString());
-                        if (!file.getName().equals(".")
-                                && !file.getName().equals("..")
-                                && fs.isDirectory(file)) {
-                            out.print("/.");
-                        }
-                        out.println();
-                    }
-                }
-                case "cd" -> {
-                    if (argument == null) {
-                        out.println("Usage: cd [directory]");
-                        continue;
-                    }
-                    PhantomPath newWorkDirectory = parseContentPath(out, argument);
-                    if (newWorkDirectory == null) {
-                        continue;
-                    }
-                    if (newWorkDirectory.isRelative()) {
-                        newWorkDirectory = workDirectory.resolve(newWorkDirectory);
-                    }
-                    if (!fs.exists(newWorkDirectory)) {
-                        out.println(argument + " does not exists!");
-                        continue;
-                    }
-                    if (!fs.isDirectory(newWorkDirectory)) {
-                        out.println(argument + " is not a directory!");
-                        continue;
-                    }
-                    workDirectory = fs.toRealPath(newWorkDirectory);
-                    out.println(workDirectory);
-                }
-                case "about" -> {
-                    if (argument == null) {
-                        out.println("Usage: about [file]");
-                        continue;
-                    }
-                    PhantomPath p = parseContentPath(out, argument);
-                    if (p == null) {
-                        continue;
-                    }
-                    if (p.isRelative()) {
-                        p = workDirectory.resolve(p);
-                    }
-                    if (!fs.exists(p)) {
-                        out.println(argument + " does not exists!");
-                        continue;
-                    }
-                    FileEntry entry = readEntry(out, fs, p);
-                    if (entry == null) {
-                        continue;
-                    }
-                    out.println("Properties of:");
-                    out.println(entry.getPath().toString());
-                    out.println(" Type: " + entry.getType());
-                    out.println(" Created: " + UIUtils.asShortLocalizedDateTime(entry.getCreated()));
-                    out.println(" Modified: " + UIUtils.asShortLocalizedDateTime(entry.getModified()));
-                    out.println(" Size: " + UIUtils.formatBytes(entry.getSize()));
-                    if (entry.getType().equals(FileEntryType.DIRECTORY)) {
-                        out.println("  " + entry.getFiles() + " Files, " + entry.getDirectories() + " Directories");
-                    }
-                    
-                    byte[] sha256 = entry.getSha256();
-                    byte[] sample = entry.getSample();
-
-                    if (sha256 != null || sample != null) {
-                        HexFormat hex = HexFormat.of();
-                        if (sha256 != null) {
-                            out.println(" SHA256: " + hex.formatHex(sha256));
-                        }
-                        if (sample != null) {
-                            out.println(" Sample: " + hex.formatHex(sample));
-                        }
-                    }
-                }
-                case "search", "csearch", "ecsearch", "esearch" -> {
-                    if (argument == null) {
-                        out.println("Usage: " + command + " [name]");
-                        continue;
-                    }
-                    boolean caseSensitive = command.equals("csearch") || command.equals("ecsearch");
-                    boolean exact = command.equals("esearch") || command.equals("ecsearch");
-                    PhantomPath[] p;
-                    try {
-                        p = fs.search(workDirectory, argument, caseSensitive, exact, true);
-                    } catch (InterruptedException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                    if (p.length == 0) {
-                        out.println("No files found for '" + argument + "'!");
-                        continue;
-                    }
-                    for (PhantomPath e : p) {
-                        out.print(e.relative(workDirectory));
-                        if (fs.isDirectory(e)) {
-                            out.println("/.");
-                        } else {
-                            out.println();
-                        }
-                    }
-                    out.println(p.length + " Files found for '" + argument + "'!");
-                }
-
                 default -> {
-                    if (!command.equals("help")) {
-                        out.println("Invalid command: " + command);
+                    Command newCommand = commands.getCommand(command);
+                    if (newCommand != null) {
+                        try {
+                            out.println(newCommand.execute(state, argument).trim());
+                        } catch (CommandException ex) {
+                            out.println(ex.getLocalizedMessage().trim());
+                            if (ex.getCause() != null) {
+                                out.println("Exception:");
+                                ex.getCause().printStackTrace(out);
+                            }
+                        }
+                    } else {
+                        if (!command.equals("help")) {
+                            out.println("Invalid command: " + command);
+                        }
+                        printTerminalHelp(out);
                     }
-                    printTerminalHelp(out);
                 }
             }
         }
