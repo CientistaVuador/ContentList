@@ -26,8 +26,6 @@
  */
 package matinilad.contentlist.ui.tui.commands;
 
-import matinilad.contentlist.phantomfs.PhantomFileSystem;
-import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.ui.tui.Command;
 import matinilad.contentlist.ui.tui.CommandException;
 import matinilad.contentlist.ui.tui.TUIState;
@@ -36,46 +34,53 @@ import matinilad.contentlist.ui.tui.TUIState;
  *
  * @author Cien
  */
-public class ListCommand extends Command {
+public class PageCommand extends Command {
 
-    public ListCommand() {
-        super("ls");
+    public PageCommand() {
+        super("page");
     }
 
     @Override
     public String getHelpMessage() {
-        return "List the files in the current working directory";
+        return "Displays a page of a command output";
     }
 
     @Override
     public String getDetailedHelpMessage() {
-        return "Usage: ls\n" + getHelpMessage();
+        return "Usage: page [index starting from 1]\n" + getHelpMessage() + "\nIf the output of a command is too long, it will be split into pages.\nUse page with no arguments to view the number of available pages";
     }
-    
+
     @Override
     public String execute(String input) throws CommandException {
-        StringBuilder b = new StringBuilder();
-
-        PhantomFileSystem fs = getFileSystem();
         TUIState state = getState();
+        int pages = state.getNumberOfPages();
 
-        PhantomPath[] files = fs.listFiles(state.getWorkingDirectory(), true);
-        for (int i = 0; i < files.length; i++) {
-            PhantomPath file = files[i];
-            
-            b.append(file.relative(state.getWorkingDirectory()).toString());
-            if (!file.getName().equals(".")
-                    && !file.getName().equals("..")
-                    && fs.isDirectory(file)) {
-                b.append("/.");
-            }
-            
-            if (i != (files.length - 1)) {
-                b.append(System.lineSeparator());
-            }
+        if (input == null || input.isBlank()) {
+            return pages + (pages == 1 ? " Page" : " Pages");
         }
 
-        return b.toString();
+        int pageIndex;
+        try {
+            pageIndex = Integer.parseInt(input);
+        } catch (NumberFormatException ex) {
+            throw new CommandException("Unknown number: " + input, ex);
+        }
+        
+        String page = getState().getPage(pageIndex - 1);
+        if (page == null) {
+            throw new CommandException("Unknown page " + pageIndex + "\n"+pages+(pages == 1 ? " Page" : " Pages")+" available");
+        }
+        pageIndex--;
+        
+        String message = "";
+        if (pages > 1) {
+            message = "\n\nPage "+(pageIndex+1)+" of "+pages;
+            if (pageIndex < (pages - 1)) {
+                message += "\nSee the next page with page "+(pageIndex + 2);
+            }
+        }
+        
+        return page + message;
     }
 
 }

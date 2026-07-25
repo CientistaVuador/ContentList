@@ -26,7 +26,10 @@
  */
 package matinilad.contentlist.ui.tui;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -35,10 +38,19 @@ import java.util.Map;
  */
 public class Commands {
     
+    private TUIState parent = null;
     private final Map<String, Command> commands = new LinkedHashMap<>();
     
     public Commands() {
         
+    }
+
+    public TUIState getParent() {
+        return parent;
+    }
+
+    public void setParent(TUIState parent) {
+        this.parent = parent;
     }
     
     public boolean addCommand(Command command) {
@@ -69,8 +81,15 @@ public class Commands {
         return false;
     }
     
+    public Command[] getCommands(boolean includeHidden) {
+        if (includeHidden) {
+            return this.commands.values().toArray(Command[]::new);
+        }
+        return this.commands.values().stream().filter((e) -> !e.isHidden()).toArray(Command[]::new);
+    }
+    
     public Command[] getCommands() {
-        return this.commands.values().toArray(Command[]::new);
+        return getCommands(true);
     }
     
     public Command getCommand(String name) {

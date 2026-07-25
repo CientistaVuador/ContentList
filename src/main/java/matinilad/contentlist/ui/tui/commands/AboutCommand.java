@@ -43,23 +43,31 @@ import matinilad.contentlist.ui.tui.TUIState;
 public class AboutCommand extends Command {
 
     public AboutCommand() {
-        super("about", "Shows information about a file/directory");
+        super("about");
     }
 
     @Override
-    public String execute(TUIState state, String input) throws CommandException {
+    public String getHelpMessage() {
+        return "Shows information about a file/directory";
+    }
+    
+    @Override
+    public String getDetailedHelpMessage() {
+        return "Usage: about [file/directory]\n" + getHelpMessage();
+    }
+    
+    @Override
+    public String execute(String input) throws CommandException {
         StringBuilder b = new StringBuilder();
         
         if (input == null) {
             throw new CommandException("Usage: about [file]");
         }
         
-        PhantomFileSystem fs = state.getFileSystem();
+        PhantomFileSystem fs = getFileSystem();
+        TUIState state = getState();
         
-        PhantomPath p = state.parsePath(input);
-        if (p.isRelative()) {
-            p = state.getWorkingDirectory().resolve(p);
-        }
+        PhantomPath p = state.resolveToWorkingDirectory(state.parsePath(input));
         if (!fs.exists(p)) {
             throw new CommandException(input + " does not exists!");
         }

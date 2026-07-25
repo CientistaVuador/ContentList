@@ -26,56 +26,55 @@
  */
 package matinilad.contentlist.ui.tui.commands;
 
-import matinilad.contentlist.phantomfs.PhantomFileSystem;
-import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.ui.tui.Command;
 import matinilad.contentlist.ui.tui.CommandException;
-import matinilad.contentlist.ui.tui.TUIState;
 
 /**
  *
  * @author Cien
  */
-public class ListCommand extends Command {
+public class HelpCommand extends Command {
 
-    public ListCommand() {
-        super("ls");
+    public HelpCommand() {
+        super("help");
     }
 
     @Override
     public String getHelpMessage() {
-        return "List the files in the current working directory";
+        return "Shows information about commands";
     }
 
     @Override
     public String getDetailedHelpMessage() {
-        return "Usage: ls\n" + getHelpMessage();
+        return "Usage: help [command]\n"+getHelpMessage()+"\nLeave [command] empty for a list of commands";
     }
     
     @Override
     public String execute(String input) throws CommandException {
-        StringBuilder b = new StringBuilder();
-
-        PhantomFileSystem fs = getFileSystem();
-        TUIState state = getState();
-
-        PhantomPath[] files = fs.listFiles(state.getWorkingDirectory(), true);
-        for (int i = 0; i < files.length; i++) {
-            PhantomPath file = files[i];
+        if (input == null || input.isBlank()) {
+            StringBuilder b = new StringBuilder();
             
-            b.append(file.relative(state.getWorkingDirectory()).toString());
-            if (!file.getName().equals(".")
-                    && !file.getName().equals("..")
-                    && fs.isDirectory(file)) {
-                b.append("/.");
+            Command[] commands = getCommands().getCommands(false);
+            
+            b.append("Type help [command] to display information about a command.").append(System.lineSeparator());
+            b.append(commands.length).append(" Commands available:").append(System.lineSeparator()).append(System.lineSeparator());
+            
+            for (int i = 0; i < commands.length; i++) {
+                Command c = commands[i];
+                b.append(c.getName()).append(" - ").append(c.getHelpMessage());
+                if (i != (commands.length - 1)) {
+                    b.append(System.lineSeparator());
+                }
             }
             
-            if (i != (files.length - 1)) {
-                b.append(System.lineSeparator());
-            }
+            return b.toString();
         }
-
-        return b.toString();
+        
+        Command c = getCommands().getCommand(input.split(" ")[0].trim());
+        if (c == null) {
+            throw new CommandException("Unknown command: "+input);
+        }
+        return c.getDetailedHelpMessage();
     }
-
+    
 }

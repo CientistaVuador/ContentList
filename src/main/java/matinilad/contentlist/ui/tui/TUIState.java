@@ -26,7 +26,6 @@
  */
 package matinilad.contentlist.ui.tui;
 
-import java.io.PrintStream;
 import matinilad.contentlist.phantomfs.PhantomFileSystem;
 import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
@@ -37,11 +36,40 @@ import matinilad.contentlist.phantomfs.entry.FileEntry;
  */
 public class TUIState {
 
+    private Commands commands = null;
+
     private PhantomFileSystem fileSystem = null;
     private PhantomPath workingDirectory = PhantomPath.of("/");
-
+    
+    private int linesPerPage = 20;
+    private String[] lines = null;
+    
     public TUIState() {
 
+    }
+
+    public Commands getCommands() {
+        return commands;
+    }
+    
+    public boolean setCommands(Commands commands) {
+        if (commands == null) {
+            if (this.commands != null) {
+                this.commands.setParent(null);
+                this.commands = null;
+                return true;
+            }
+            return false;
+        }
+        if (commands.getParent() != null) {
+            return false;
+        }
+        if (this.commands != null) {
+            this.commands.setParent(null);
+        }
+        this.commands = commands;
+        commands.setParent(this);
+        return true;
     }
 
     public PhantomFileSystem getFileSystem() {
@@ -69,13 +97,81 @@ public class TUIState {
         }
         return path;
     }
+    
+    public PhantomPath resolveToWorkingDirectory(PhantomPath path) throws CommandException {
+        if (path.isRelative()) {
+            path = getWorkingDirectory().resolve(path);
+        }
+        return path;
+    }
+    
+    public PhantomPath resolveToWorkingDirectory(String path) throws CommandException {
+        return resolveToWorkingDirectory(parsePath(path));
+    }
+    
+    public PhantomPath checkedResolveToWorkingDirectory(String path) throws CommandException {
+        PhantomPath p = resolveToWorkingDirectory(path);
+        if (!getFileSystem().exists(p)) {
+            throw new CommandException(path + " does not exists!");
+        }
+        return p;
+    }
 
     public FileEntry getEntry(PhantomPath path) throws CommandException {
         FileEntry entry = getFileSystem().getEntry(path);
         if (entry == null) {
-            throw new CommandException("Entry not found" + System.lineSeparator() + path.toString());
+            throw new CommandException("Entry not found: " + path.toString());
         }
         return entry;
     }
 
+    public int getLinesPerPage() {
+        return linesPerPage;
+    }
+
+    public void setLinesPerPage(int linesPerPage) {
+        if (linesPerPage < 1) {
+            throw new IllegalArgumentException("linesPerPage < 1");
+        }
+        this.linesPerPage = linesPerPage;
+    }
+    
+    public void setCommandOutput(String text) {
+        if (text == null) {
+            this.lines = null;
+            return;
+        }
+        this.lines = text.lines().toArray(String[]::new);
+    }
+    
+    public int getNumberOfPages() {
+        if (this.lines == null) {
+            return 0;
+        }
+        return (this.lines.length / this.linesPerPage) + ((this.lines.length % this.linesPerPage) != 0 ? 1 : 0);
+    }
+    
+    public String getPage(int index) {
+        if (this.lines == null || this.lines.length == 0 || index < 0) {
+            return null;
+        }
+        
+        int startLine = index * this.linesPerPage;
+        int endLine = Math.min((index * this.linesPerPage) + this.linesPerPage, this.lines.length);
+        
+        if (startLine >= this.lines.length) {
+            return null;
+        }
+        
+        StringBuilder b = new StringBuilder();
+        
+        for (int i = startLine; i < endLine; i++) {
+            b.append(this.lines[i]);
+            if (i != (endLine - 1)) {
+                b.append(System.lineSeparator());
+            }
+        }
+        
+        return b.toString();
+    }
 }

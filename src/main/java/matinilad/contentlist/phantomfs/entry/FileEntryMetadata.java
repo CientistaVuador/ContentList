@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Properties;
 import matinilad.contentlist.phantomfs.PhantomPath;
 
 /**
@@ -334,7 +335,30 @@ public class FileEntryMetadata {
             throw new UncheckedIOException(ex);
         }
     }
-
+    
+    private void saveToProperties(PhantomPath path, Properties properties) {
+        String key = path.toString();
+        String value = readString(path);
+        if (value != null) {
+            properties.put(key, value);
+        }
+        
+        PhantomPath[] files = list(path, false, false);
+        for (PhantomPath p:files) {
+            saveToProperties(p, properties);
+        }
+    }
+    
+    public void saveToProperties(Properties properties) {
+        saveToProperties(PhantomPath.of("/"), properties);
+    }
+    
+    public void loadFromProperties(Properties properties) {
+        for (Entry<Object, Object> e:properties.entrySet()) {
+            writeString(PhantomPath.of(e.getKey().toString()), e.getValue().toString());
+        }
+    }
+    
     @Override
     public String toString() {
         return save();

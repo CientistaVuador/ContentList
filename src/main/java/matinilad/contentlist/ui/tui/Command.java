@@ -27,6 +27,7 @@
 package matinilad.contentlist.ui.tui;
 
 import java.util.Objects;
+import matinilad.contentlist.phantomfs.PhantomFileSystem;
 
 /**
  *
@@ -35,19 +36,12 @@ import java.util.Objects;
 public abstract class Command {
 
     private Commands parent;
-    
     private final String name;
-    private String helpMessage = "";
-    
-    public Command(String name, String helpMessage) {
-        this.name = Objects.requireNonNull(name, "name is null");
-        this.helpMessage = (helpMessage == null ? "" : helpMessage);
-    }
-    
-    public Command(String name) {
-        this(name, null);
-    }
 
+    public Command(String name) {
+        this.name = Objects.requireNonNull(name, "name is null");
+    }
+    
     public Commands getParent() {
         return parent;
     }
@@ -55,18 +49,42 @@ public abstract class Command {
     public void setParent(Commands parent) {
         this.parent = parent;
     }
-    
+
     public String getName() {
         return name;
     }
-
-    public String getHelpMessage() {
-        return helpMessage;
-    }
-
-    public void setHelpMessage(String helpMessage) {
-        this.helpMessage = (helpMessage == null ? "" : helpMessage);
+    
+    public boolean isHidden() {
+        return false;
     }
     
-    public abstract String execute(TUIState state, String input) throws CommandException;
+    public abstract String getHelpMessage();
+
+    public abstract String getDetailedHelpMessage();
+
+    protected Commands getCommands() throws CommandException {
+        Commands p = getParent();
+        if (p == null) {
+            throw new CommandException("Command has no parent");
+        }
+        return p;
+    }
+
+    protected TUIState getState() throws CommandException {
+        TUIState state = getCommands().getParent();
+        if (state == null) {
+            throw new CommandException("Command has no state");
+        }
+        return state;
+    }
+
+    protected PhantomFileSystem getFileSystem() throws CommandException {
+        PhantomFileSystem fileSystem = getState().getFileSystem();
+        if (fileSystem == null) {
+            throw new CommandException("Command has no file system");
+        }
+        return fileSystem;
+    }
+
+    public abstract String execute(String input) throws CommandException;
 }

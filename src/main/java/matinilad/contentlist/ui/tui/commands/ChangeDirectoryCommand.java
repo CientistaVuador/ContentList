@@ -39,12 +39,23 @@ import matinilad.contentlist.ui.tui.TUIState;
 public class ChangeDirectoryCommand extends Command {
 
     public ChangeDirectoryCommand() {
-        super("cd", "Changes the current directory");
+        super("cd");
     }
 
     @Override
-    public String execute(TUIState state, String input) throws CommandException {
-        PhantomFileSystem fs = state.getFileSystem();
+    public String getHelpMessage() {
+        return "Changes the current working directory";
+    }
+
+    @Override
+    public String getDetailedHelpMessage() {
+        return "Usage: cd [directory]\n" + getHelpMessage();
+    }
+    
+    @Override
+    public String execute(String input) throws CommandException {
+        PhantomFileSystem fs = getFileSystem();
+        TUIState state = getState();
         
         if (input == null) {
             throw new CommandException("Usage: cd [directory]");

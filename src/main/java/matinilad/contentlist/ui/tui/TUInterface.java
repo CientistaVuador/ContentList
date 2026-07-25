@@ -10,7 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.HexFormat;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Scanner;
@@ -18,11 +17,13 @@ import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.PhantomFileSystem;
 import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.phantomfs.entry.FileEntryReader;
-import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.ui.UIUtils;
 import matinilad.contentlist.ui.tui.commands.AboutCommand;
 import matinilad.contentlist.ui.tui.commands.ChangeDirectoryCommand;
+import matinilad.contentlist.ui.tui.commands.HelpCommand;
 import matinilad.contentlist.ui.tui.commands.ListCommand;
+import matinilad.contentlist.ui.tui.commands.MetadataCommand;
+import matinilad.contentlist.ui.tui.commands.PageCommand;
 import matinilad.contentlist.ui.tui.commands.SearchCommand;
 
 /**
@@ -115,36 +116,7 @@ public class TUInterface {
         }
         return entry;
     }
-
-    private static PhantomPath parseContentPath(PrintStream out, String argument) {
-        PhantomPath path;
-        try {
-            path = PhantomPath.of(argument);
-        } catch (IllegalArgumentException ex) {
-            out.println(argument + " is not a valid path!");
-            out.println(ex.getLocalizedMessage());
-            ex.printStackTrace(out);
-            return null;
-        }
-        return path;
-    }
-
-    private static void printTerminalHelp(PrintStream out) {
-        out.println("Available commands:");
-        out.println("ls");
-        out.println(" List the files in the current directory");
-        out.println("cd [directory]");
-        out.println(" Changes the current directory");
-        out.println("about [file/directory]");
-        out.println(" Shows information about a file/directory");
-        out.println("search [name]");
-        out.println(" Lists all files/directories in the current directory, including subdirectories, containing a name");
-        out.println(" Variations:");
-        out.println("  csearch - Case sensitive");
-        out.println("  esearch - Exact name");
-        out.println("  ecsearch - Exact name, Case sensitive");
-    }
-
+    
     private static void runTerminal(InputStream in, PrintStream out, PhantomFileSystem fs) {
         Scanner scanner = new Scanner(in);
 
@@ -161,15 +133,22 @@ public class TUInterface {
         state.setFileSystem(fs);
 
         Commands commands = new Commands();
+
+        commands.addCommand(new HelpCommand());
+        commands.addCommand(new PageCommand());
         
         commands.addCommand(new ListCommand());
         commands.addCommand(new ChangeDirectoryCommand());
         commands.addCommand(new AboutCommand());
-        
+
         commands.addCommand(new SearchCommand());
         commands.addCommand(new SearchCommand.CaseSensitive());
         commands.addCommand(new SearchCommand.Exact());
         commands.addCommand(new SearchCommand.ExactCaseSensitive());
+        
+        commands.addCommand(new MetadataCommand());
+
+        state.setCommands(commands);
 
         while (true) {
             out.print("]");
@@ -192,26 +171,29 @@ public class TUInterface {
                 argument = null;
             }
             
-            switch (command) {
-                default -> {
-                    Command newCommand = commands.getCommand(command);
-                    if (newCommand != null) {
-                        try {
-                            out.println(newCommand.execute(state, argument).trim());
-                        } catch (CommandException ex) {
-                            out.println(ex.getLocalizedMessage().trim());
-                            if (ex.getCause() != null) {
-                                out.println("Exception:");
-                                ex.getCause().printStackTrace(out);
-                            }
+            Command newCommand = commands.getCommand(command);
+            if (newCommand != null) {
+                try {
+                    String commandOutput = newCommand.execute(argument).trim();
+                    
+                    Command pageCommand = state.getCommands().getCommand("page");
+                    if (pageCommand != newCommand) {
+                        state.setCommandOutput(commandOutput);
+                        if (state.getNumberOfPages() > 0) {
+                            out.println(pageCommand.execute("1"));
                         }
                     } else {
-                        if (!command.equals("help")) {
-                            out.println("Invalid command: " + command);
-                        }
-                        printTerminalHelp(out);
+                        out.println(commandOutput);
+                    }
+                } catch (CommandException ex) {
+                    out.println(ex.getLocalizedMessage().trim());
+                    if (ex.getCause() != null) {
+                        out.println("Exception:");
+                        ex.getCause().printStackTrace(out);
                     }
                 }
+            } else {
+                out.println("Unknown command: " + command +"\nType help for a list of commands.");
             }
         }
     }

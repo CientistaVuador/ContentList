@@ -26,8 +26,12 @@
  */
 package matinilad.contentlist.ui.tui.commands;
 
+import java.io.IOException;
+import java.io.StringWriter;
+import java.util.Properties;
 import matinilad.contentlist.phantomfs.PhantomFileSystem;
 import matinilad.contentlist.phantomfs.PhantomPath;
+import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.ui.tui.Command;
 import matinilad.contentlist.ui.tui.CommandException;
 import matinilad.contentlist.ui.tui.TUIState;
@@ -36,46 +40,42 @@ import matinilad.contentlist.ui.tui.TUIState;
  *
  * @author Cien
  */
-public class ListCommand extends Command {
+public class MetadataCommand extends Command {
 
-    public ListCommand() {
-        super("ls");
+    public MetadataCommand() {
+        super("meta");
     }
 
     @Override
     public String getHelpMessage() {
-        return "List the files in the current working directory";
+        return "Displays the raw metadata of a file";
     }
 
     @Override
     public String getDetailedHelpMessage() {
-        return "Usage: ls\n" + getHelpMessage();
+        return "Usage: meta [file]\n" + getHelpMessage();
     }
-    
+
     @Override
     public String execute(String input) throws CommandException {
-        StringBuilder b = new StringBuilder();
-
-        PhantomFileSystem fs = getFileSystem();
-        TUIState state = getState();
-
-        PhantomPath[] files = fs.listFiles(state.getWorkingDirectory(), true);
-        for (int i = 0; i < files.length; i++) {
-            PhantomPath file = files[i];
-            
-            b.append(file.relative(state.getWorkingDirectory()).toString());
-            if (!file.getName().equals(".")
-                    && !file.getName().equals("..")
-                    && fs.isDirectory(file)) {
-                b.append("/.");
-            }
-            
-            if (i != (files.length - 1)) {
-                b.append(System.lineSeparator());
-            }
+        if (input == null || input.isEmpty()) {
+            throw new CommandException(getDetailedHelpMessage());
         }
 
-        return b.toString();
+        TUIState state = getState();
+        FileEntry entry = state.getEntry(state.checkedResolveToWorkingDirectory(input));
+
+        Properties properties = new Properties();
+        entry.getMetadata().saveToProperties(properties);
+
+        try {
+            StringWriter writer = new StringWriter();
+            properties.store(writer, "Metadata of "+entry.getPath().toString());
+            
+            return writer.toString();
+        } catch (IOException ex) {
+            throw new CommandException(ex);
+        }
     }
 
 }

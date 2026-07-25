@@ -45,8 +45,13 @@ public class SearchCommand extends Command {
         }
 
         @Override
-        public String execute(TUIState state, String input) throws CommandException {
-            return super.execute(state, input, true, false);
+        public boolean isHidden() {
+            return true;
+        }
+        
+        @Override
+        public String execute(String input) throws CommandException {
+            return super.execute(input, true, false);
         }
     }
     
@@ -56,8 +61,13 @@ public class SearchCommand extends Command {
         }
         
         @Override
-        public String execute(TUIState state, String input) throws CommandException {
-            return super.execute(state, input, false, true);
+        public boolean isHidden() {
+            return true;
+        }
+        
+        @Override
+        public String execute(String input) throws CommandException {
+            return super.execute(input, false, true);
         }
     }
     
@@ -67,30 +77,51 @@ public class SearchCommand extends Command {
         }
         
         @Override
-        public String execute(TUIState state, String input) throws CommandException {
-            return super.execute(state, input, true, true);
+        public boolean isHidden() {
+            return true;
+        }
+        
+        @Override
+        public String execute(String input) throws CommandException {
+            return super.execute(input, true, true);
         }
     }
     
     protected SearchCommand(String name) {
-        super(name, "Searches for a file in the current directory and subdirectories.");
+        super(name);
     }
     
     public SearchCommand() {
-        super("search", "Searches for a file in the current directory and subdirectories.");
+        super("search");
+    }
+
+    @Override
+    public String getHelpMessage() {
+        return "Searches in the current directory and subdirectories.";
+    }
+
+    @Override
+    public String getDetailedHelpMessage() {
+        return "Usage: search [name]\n"+
+                " "+getHelpMessage()+"\n"+
+                " Variations:\n"+
+                "  csearch - Case sensitive\n"+
+                "  esearch - Exact name\n"+
+                "  ecsearch - Exact name, Case sensitive";
     }
     
     @Override
-    public String execute(TUIState state, String input) throws CommandException {
-        return execute(state, input, false, false);
+    public String execute(String input) throws CommandException {
+        return execute(input, false, false);
     }
     
-    protected String execute(TUIState state, String input, boolean caseSensitive, boolean exact) throws CommandException {
+    protected String execute(String input, boolean caseSensitive, boolean exact) throws CommandException {
         if (input == null) {
             throw new CommandException("Usage: " + getName() + " [name]");
         }
         
-        PhantomFileSystem fs = state.getFileSystem();
+        PhantomFileSystem fs = getFileSystem();
+        TUIState state = getState();
         
         PhantomPath[] p;
         try {
@@ -105,6 +136,16 @@ public class SearchCommand extends Command {
         
         StringBuilder b = new StringBuilder();
         
+        b.append(p.length)
+                .append(" ")
+                .append(p.length == 1 ? "File" : "Files")
+                .append(" found for '")
+                .append(input)
+                .append("'!")
+                .append(System.lineSeparator())
+                .append(System.lineSeparator())
+                ;
+        
         for (PhantomPath e : p) {
             b.append(e.relative(state.getWorkingDirectory()));
             if (fs.isDirectory(e)) {
@@ -112,13 +153,6 @@ public class SearchCommand extends Command {
             }
             b.append(System.lineSeparator());
         }
-        b.append(p.length)
-                .append(" ")
-                .append(p.length == 1 ? "File" : "Files")
-                .append(" found for '")
-                .append(input)
-                .append("'!")
-                .append(System.lineSeparator());
         
         return b.toString();
     }

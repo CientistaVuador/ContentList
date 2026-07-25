@@ -44,7 +44,7 @@ import matinilad.contentlist.phantomfs.entry.FileEntryType;
  * @author Cien
  */
 public class PhantomFileSystem {
-    
+
     private static class InternalFile {
 
         FileEntry entry = null;
@@ -64,7 +64,7 @@ public class PhantomFileSystem {
         root.children.put("..", root.parent);
         root.children.put(".", root);
     }
-    
+
     public PhantomFileSystem() {
 
     }
@@ -72,11 +72,11 @@ public class PhantomFileSystem {
     private void writeEntryImpl(FileEntry entry) {
         PhantomPath path = entry.getPath();
         boolean directory = entry.getType().equals(FileEntryType.DIRECTORY);
-        
+
         InternalFile currentDirectory = this.root;
         for (int i = 0; i < path.getNumberOfObjects() - 1; i++) {
             String directoryName = path.getObject(i);
-            
+
             InternalFile dir = currentDirectory.children.get(directoryName);
             if (dir == null) {
                 dir = new InternalFile();
@@ -91,18 +91,18 @@ public class PhantomFileSystem {
                 dir.children.put("..", dir.parent);
                 dir.children.put(".", dir);
             }
-            
+
             if (!dir.directory) {
                 return;
             }
-            
+
             currentDirectory = dir;
         }
 
         InternalFile file = (path.isRoot() ? this.root : currentDirectory.children.get(path.getName()));
         if (file == null) {
             file = new InternalFile();
-            
+
             file.entry = entry;
             file.name = path.getName();
             file.directory = directory;
@@ -115,16 +115,16 @@ public class PhantomFileSystem {
                 file.children.put(".", file);
             }
         }
-        
+
         if (file.entry == null && file.directory == directory) {
             file.entry = entry;
         }
     }
-    
+
     public void writeEntry(FileEntry entry) {
         writeEntryImpl(entry);
     }
-    
+
     private void validateFile(InternalFile file) {
         if (!file.directory) {
             if (file.entry == null) {
@@ -134,45 +134,45 @@ public class PhantomFileSystem {
             file.entry.setDirectories(0);
             return;
         }
-        
+
         FileEntry dirEntry = file.entry;
         if (dirEntry == null) {
             dirEntry = new FileEntry(realPath(file), FileEntryType.DIRECTORY);
             file.entry = dirEntry;
         }
-        
+
         long size = 0;
         int files = 0;
         int directories = 0;
-        
-        for (Entry<String, InternalFile> entry:file.children.entrySet()) {
+
+        for (Entry<String, InternalFile> entry : file.children.entrySet()) {
             if (entry.getKey().equals(".") || entry.getKey().equals("..")) {
                 continue;
             }
-            
+
             InternalFile other = entry.getValue();
             validateFile(other);
-            
+
             size += other.entry.getSize();
             if (other.directory) {
                 directories++;
-                
+
                 files += other.entry.getFiles();
                 directories += other.entry.getDirectories();
             } else {
                 files++;
             }
         }
-        
+
         dirEntry.setSize(size);
         dirEntry.setFiles(files);
         dirEntry.setDirectories(directories);
     }
-    
+
     public void validate() {
         validateFile(this.root);
     }
-    
+
     private InternalFile resolve(PhantomPath path) {
         Objects.requireNonNull(path, "path is null");
         if (path.isRelative()) {
@@ -186,7 +186,7 @@ public class PhantomFileSystem {
             }
             currentFile = currentFile.children.get(path.getObject(i));
         }
-        
+
         return currentFile;
     }
 
@@ -194,14 +194,14 @@ public class PhantomFileSystem {
         if (file == this.root) {
             return PhantomPath.of("/");
         }
-        
+
         List<String> names = new ArrayList<>();
         InternalFile current = file;
         do {
             names.add(current.name);
         } while ((current = current.parent) != this.root);
         Collections.reverse(names);
-        
+
         return PhantomPath.of(names.toArray(String[]::new), false);
     }
 
@@ -214,7 +214,7 @@ public class PhantomFileSystem {
     public boolean exists(PhantomPath path) {
         return resolve(path) != null;
     }
-    
+
     /**
      * Checks if a path is a directory in the file system
      *
@@ -250,7 +250,7 @@ public class PhantomFileSystem {
         if (resolved == null) {
             return null;
         }
-        
+
         return realPath(resolved);
     }
 
@@ -266,7 +266,7 @@ public class PhantomFileSystem {
         if (resolved == null || !resolved.directory) {
             return null;
         }
-        
+
         PhantomPath realPath = realPath(resolved);
 
         List<PhantomPath> files = new ArrayList<>();
@@ -279,7 +279,7 @@ public class PhantomFileSystem {
 
         return files.toArray(PhantomPath[]::new);
     }
-    
+
     public PhantomPath[] listFiles(PhantomPath path) {
         return listFiles(path, false);
     }
@@ -312,11 +312,11 @@ public class PhantomFileSystem {
         }
         return entries.toArray(FileEntry[]::new);
     }
-
-    //TODO: less chaotic return results
+    
     private void search(
-            List<PhantomPath> output,
-            InternalFile f, String name, boolean caseSensitive, boolean exactName,
+            List<PhantomPath> output, boolean sort,
+            InternalFile file,
+            String name, boolean caseSensitive, boolean exactName,
             int depth
     ) throws InterruptedException {
         if (Thread.interrupted()) {
@@ -324,40 +324,55 @@ public class PhantomFileSystem {
         }
 
         if (depth != 0) {
-            String filename = (f.name == null ? "" : f.name);
+            String filename = (file.name == null ? "" : file.name);
             if (!caseSensitive) {
                 filename = filename.toLowerCase();
             }
             if ((exactName && filename.equals(name)) || (!exactName && filename.contains(name))) {
-                output.add(realPath(f));
+                output.add(realPath(file));
             }
         }
-        
-        if (f.directory) {
-            for (Map.Entry<String, InternalFile> e : f.children.entrySet()) {
+
+        if (file.directory) {
+            List<InternalFile> files = new ArrayList<>();
+            List<InternalFile> directories = new ArrayList<>();
+
+            for (Map.Entry<String, InternalFile> e : file.children.entrySet()) {
                 if ((e.getKey().equals(".") || e.getKey().equals(".."))) {
                     continue;
                 }
-                search(output, e.getValue(), name, caseSensitive, exactName, depth + 1);
+                if (e.getValue().directory) {
+                    directories.add(e.getValue());
+                } else {
+                    files.add(e.getValue());
+                }
+            }
+
+            if (sort) {
+                Comparator<InternalFile> comparator = (o1, o2) -> {
+                    String n1 = o1.name;
+                    if (n1 == null) {
+                        n1 = "";
+                    }
+                    String n2 = o2.name;
+                    if (n2 == null) {
+                        n2 = "";
+                    }
+                    return String.CASE_INSENSITIVE_ORDER.compare(n1, n2);
+                };
+                files.sort(comparator);
+                directories.sort(comparator);
+            }
+            
+            for (InternalFile e:files) {
+                search(output, sort, e, name, caseSensitive, exactName, depth + 1);
+            }
+            for (InternalFile e:directories) {
+                search(output, sort, e, name, caseSensitive, exactName, depth + 1);
             }
         }
     }
-
-    private static void sortByName(List<PhantomPath> list) {
-        Comparator<PhantomPath> comparator = (o1, o2) -> {
-            String n1 = o1.getName();
-            if (n1 == null) {
-                n1 = "";
-            }
-            String n2 = o2.getName();
-            if (n2 == null) {
-                n2 = "";
-            }
-            return String.CASE_INSENSITIVE_ORDER.compare(n1, n2);
-        };
-        list.sort(comparator);
-    }
-
+    
     /**
      * Searches in a directory for all files and directories containing a name
      *
@@ -365,10 +380,15 @@ public class PhantomFileSystem {
      * @param name The name to search for, not null
      * @param caseSensitive If the name is case sensitive
      * @param exactName If the file name should be the exact name
+     * @param sort If the output must be sorted by alphabetical order
      * @return the files containing the name or null if the path does not exists or is not a directory
+     * @throws java.lang.InterruptedException
      */
-    public PhantomPath[] search(PhantomPath path, String name, boolean caseSensitive, boolean exactName, boolean sort)
-            throws InterruptedException {
+    public PhantomPath[] search(
+            PhantomPath path,
+            String name, boolean caseSensitive, boolean exactName,
+            boolean sort
+    ) throws InterruptedException {
         Objects.requireNonNull(name, "name is null");
         InternalFile resolved = resolve(path);
         if (resolved == null || !resolved.directory) {
@@ -378,28 +398,10 @@ public class PhantomFileSystem {
             name = name.toLowerCase();
         }
         List<PhantomPath> files = new ArrayList<>();
-        search(files, resolved, name, caseSensitive, exactName, 0);
-        if (sort) {
-            List<PhantomPath> directoriesList = new ArrayList<>();
-            List<PhantomPath> filesList = new ArrayList<>();
-            for (PhantomPath p : files) {
-                if (isDirectory(p)) {
-                    directoriesList.add(p);
-                } else {
-                    filesList.add(p);
-                }
-            }
-            
-            sortByName(directoriesList);
-            sortByName(filesList);
-            
-            files.clear();
-            files.addAll(directoriesList);
-            files.addAll(filesList);
-        }
+        search(files, sort, resolved, name, caseSensitive, exactName, 0);
         return files.toArray(PhantomPath[]::new);
     }
-
+    
     public FileEntry getEntry(PhantomPath path) {
         InternalFile resolved = resolve(path);
         if (resolved == null) {
@@ -407,5 +409,5 @@ public class PhantomFileSystem {
         }
         return resolved.entry;
     }
-    
+
 }
