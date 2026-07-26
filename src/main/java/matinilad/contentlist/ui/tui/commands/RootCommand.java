@@ -26,7 +26,8 @@
  */
 package matinilad.contentlist.ui.tui.commands;
 
-import java.io.PrintStream;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import matinilad.contentlist.ui.tui.Command;
 import matinilad.contentlist.ui.tui.CommandException;
 import matinilad.contentlist.ui.tui.TUIState;
@@ -35,65 +36,46 @@ import matinilad.contentlist.ui.tui.TUIState;
  *
  * @author Cien
  */
-public class PageCommand extends Command {
+public class RootCommand extends Command {
 
-    public PageCommand() {
-        super("pg");
-    }
-
-    @Override
-    public boolean isDirectOutputEnabled() {
-        return true;
+    public RootCommand() {
+        super("root");
     }
     
     @Override
     public String getHelpMessage() {
-        return "Displays a page of a command output";
+        return "Set the current root directory";
     }
 
     @Override
     public String getDetailedHelpMessage() {
-        return "Usage: pg [index starting from 1]\n" +
-                getHelpMessage() + "\n"
-                + "If the output of a command is too long, it will be split into pages. (with some exceptions)\n"
-                + "Use pg with no arguments to view the number of available pages";
+        return "Usage: root [directory]\n"+getHelpMessage()+"\nUse root with no arguments to display the current root directory";
     }
-    
+
     @Override
     public String execute(String input) throws CommandException {
-        PrintStream out = getDirectOutput();
+        if (input == null || input.isEmpty()) {
+            Path root = getState().getRootDirectory();
+            if (root == null) {
+                return "No root directory set";
+            }
+            return root.toString();
+        }
+        Path path;
+        try {
+            path = Path.of(input);
+        } catch (InvalidPathException ex) {
+            throw new CommandException("Invalid path: "+input, ex);
+        }
         
         TUIState state = getState();
-        int pages = state.getNumberOfPages();
-
-        if (input == null || input.isBlank()) {
-            out.println(pages + (pages == 1 ? " Page" : " Pages"));
-            return "";
-        }
-        
-        int pageIndex;
+        state.setRootDirectory(path);
         try {
-            pageIndex = Integer.parseInt(input);
-        } catch (NumberFormatException ex) {
-            throw new CommandException("Unknown number: " + input, ex);
+            return state.getRootDirectoryChecked().toString();
+        } catch (CommandException ex) {
+            state.setRootDirectory(null);
+            throw ex;
         }
-        
-        String page = getState().getPage(pageIndex - 1);
-        if (page == null) {
-            throw new CommandException("Unknown page " + pageIndex + "\n"+pages+(pages == 1 ? " Page" : " Pages")+" available");
-        }
-        pageIndex--;
-        
-        String message = "";
-        if (pages > 1) {
-            message = "\n\nPage "+(pageIndex+1)+" of "+pages;
-            if (pageIndex < (pages - 1)) {
-                message += "\nSee the next page with pg "+(pageIndex + 2);
-            }
-        }
-        
-        out.println(page + message);
-        return "";
     }
-
+    
 }

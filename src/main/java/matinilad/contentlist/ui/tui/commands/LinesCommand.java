@@ -29,16 +29,15 @@ package matinilad.contentlist.ui.tui.commands;
 import java.io.PrintStream;
 import matinilad.contentlist.ui.tui.Command;
 import matinilad.contentlist.ui.tui.CommandException;
-import matinilad.contentlist.ui.tui.TUIState;
 
 /**
  *
  * @author Cien
  */
-public class PageCommand extends Command {
+public class LinesCommand extends Command {
 
-    public PageCommand() {
-        super("pg");
+    public LinesCommand() {
+        super("lines");
     }
 
     @Override
@@ -48,52 +47,37 @@ public class PageCommand extends Command {
     
     @Override
     public String getHelpMessage() {
-        return "Displays a page of a command output";
+        return "Changes the number of lines per page";
     }
 
     @Override
     public String getDetailedHelpMessage() {
-        return "Usage: pg [index starting from 1]\n" +
-                getHelpMessage() + "\n"
-                + "If the output of a command is too long, it will be split into pages. (with some exceptions)\n"
-                + "Use pg with no arguments to view the number of available pages";
+        return "Usage: lines [number]\n"+getHelpMessage()+"\nUse lines with no arguments to see the current number of lines";
     }
-    
+
     @Override
     public String execute(String input) throws CommandException {
         PrintStream out = getDirectOutput();
         
-        TUIState state = getState();
-        int pages = state.getNumberOfPages();
-
-        if (input == null || input.isBlank()) {
-            out.println(pages + (pages == 1 ? " Page" : " Pages"));
+        if (input == null || input.isEmpty()) {
+            out.println(Integer.toString(getState().getLinesPerPage())+" Lines per page");
             return "";
         }
         
-        int pageIndex;
+        int lines;
         try {
-            pageIndex = Integer.parseInt(input);
+            lines = Integer.parseInt(input);
         } catch (NumberFormatException ex) {
-            throw new CommandException("Unknown number: " + input, ex);
+            throw new CommandException("Unknown number: "+input, ex);
         }
         
-        String page = getState().getPage(pageIndex - 1);
-        if (page == null) {
-            throw new CommandException("Unknown page " + pageIndex + "\n"+pages+(pages == 1 ? " Page" : " Pages")+" available");
-        }
-        pageIndex--;
-        
-        String message = "";
-        if (pages > 1) {
-            message = "\n\nPage "+(pageIndex+1)+" of "+pages;
-            if (pageIndex < (pages - 1)) {
-                message += "\nSee the next page with pg "+(pageIndex + 2);
-            }
+        if (lines < 1) {
+            throw new CommandException("Number of lines must be larger than 0");
         }
         
-        out.println(page + message);
+        getState().setLinesPerPage(lines);
+        out.println("Success!");
         return "";
     }
-
+    
 }

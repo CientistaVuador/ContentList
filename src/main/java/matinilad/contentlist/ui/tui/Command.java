@@ -26,6 +26,8 @@
  */
 package matinilad.contentlist.ui.tui;
 
+import java.awt.Desktop;
+import java.io.PrintStream;
 import java.util.Objects;
 import matinilad.contentlist.phantomfs.PhantomFileSystem;
 
@@ -58,6 +60,10 @@ public abstract class Command {
         return false;
     }
     
+    public boolean isDirectOutputEnabled() {
+        return false;
+    }
+    
     public abstract String getHelpMessage();
 
     public abstract String getDetailedHelpMessage();
@@ -84,6 +90,24 @@ public abstract class Command {
             throw new CommandException("Command has no file system");
         }
         return fileSystem;
+    }
+    
+    protected Desktop getDesktop() throws CommandException {
+        if (!Desktop.isDesktopSupported()) {
+            throw new CommandException("Desktop is not supported");
+        }
+        return Desktop.getDesktop();
+    }
+    
+    protected PrintStream getDirectOutput() throws CommandException {
+        if (!isDirectOutputEnabled()) {
+            throw new CommandException("Error: Command is trying to use direct output without enabling it");
+        }
+        PrintStream direct = getState().getDirectOutput();
+        if (direct == null) {
+            throw new CommandException("Direct output stream not found");
+        }
+        return direct;
     }
 
     public abstract String execute(String input) throws CommandException;

@@ -26,56 +26,61 @@
  */
 package matinilad.contentlist.ui.tui.commands;
 
-import java.io.IOException;
-import java.io.StringWriter;
-import java.util.Properties;
-import matinilad.contentlist.phantomfs.PhantomFileSystem;
-import matinilad.contentlist.phantomfs.PhantomPath;
-import matinilad.contentlist.phantomfs.entry.FileEntry;
+import matinilad.contentlist.ui.BinarySpaceUnit;
+import matinilad.contentlist.ui.DecimalSpaceUnit;
+import matinilad.contentlist.ui.SpaceUnit;
+import matinilad.contentlist.ui.UIUtils;
 import matinilad.contentlist.ui.tui.Command;
 import matinilad.contentlist.ui.tui.CommandException;
-import matinilad.contentlist.ui.tui.TUIState;
 
 /**
  *
  * @author Cien
  */
-public class MetadataCommand extends Command {
+public class SpaceUnitCommand extends Command {
 
-    public MetadataCommand() {
-        super("meta");
+    public SpaceUnitCommand() {
+        super("unit");
     }
 
     @Override
     public String getHelpMessage() {
-        return "Displays the raw metadata of a file";
+        return "Changes the storage format to binary or decimal";
     }
 
     @Override
     public String getDetailedHelpMessage() {
-        return "Usage: meta [file]\n" + getHelpMessage();
+        return "Usage: unit [bin/dec]\n" + getHelpMessage() + "\nOn decimal: 1KB = 1000B\nOn binary: 1KiB = 1024B\nUse unit with no arguments to display the current unit";
+    }
+
+    private String getName(SpaceUnit unit) {
+        if (unit instanceof BinarySpaceUnit) {
+            return "Binary, 1KiB = 1024B";
+        }
+        if (unit instanceof DecimalSpaceUnit) {
+            return "Decimal, 1KB = 1000B";
+        }
+        return "Unknown, " + UIUtils.getSpaceUnit().getSuffix();
     }
 
     @Override
     public String execute(String input) throws CommandException {
         if (input == null || input.isEmpty()) {
-            throw new CommandException(getDetailedHelpMessage());
+            return getName(UIUtils.getSpaceUnit());
         }
-
-        TUIState state = getState();
-        FileEntry entry = state.getEntry(state.resolveToWorkingDirectoryChecked(input));
-
-        Properties properties = new Properties();
-        entry.getMetadata().saveToProperties(properties);
-
-        try {
-            StringWriter writer = new StringWriter();
-            properties.store(writer, "Metadata of "+entry.getPath().toString());
-            
-            return writer.toString();
-        } catch (IOException ex) {
-            throw new CommandException(ex);
+        input = input.toLowerCase().trim();
+        switch (input) {
+            case "bin", "binary" -> {
+                UIUtils.setSpaceUnit(BinarySpaceUnit.KIBIBYTE);
+            }
+            case "dec", "decimal" -> {
+                UIUtils.setSpaceUnit(DecimalSpaceUnit.KILOBYTE);
+            }
+            default -> {
+                throw new CommandException("Usage: unit [bin/dec]");
+            }
         }
+        return "Success!\n"+getName(UIUtils.getSpaceUnit());
     }
 
 }

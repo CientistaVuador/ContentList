@@ -123,6 +123,14 @@ public class FileEntryMetadata {
         }
         return resolved.value;
     }
+    
+    public String readString(PhantomPath path, String defaultValue) {
+        String s = readString(path);
+        if (s == null) {
+            return defaultValue;
+        }
+        return s;
+    }
 
     public void writeString(PhantomPath path, String value) {
         checkPathNull(path);

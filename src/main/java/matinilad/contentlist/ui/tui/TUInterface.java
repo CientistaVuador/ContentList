@@ -21,10 +21,16 @@ import matinilad.contentlist.ui.UIUtils;
 import matinilad.contentlist.ui.tui.commands.AboutCommand;
 import matinilad.contentlist.ui.tui.commands.ChangeDirectoryCommand;
 import matinilad.contentlist.ui.tui.commands.HelpCommand;
+import matinilad.contentlist.ui.tui.commands.InfoCommand;
+import matinilad.contentlist.ui.tui.commands.LinesCommand;
 import matinilad.contentlist.ui.tui.commands.ListCommand;
 import matinilad.contentlist.ui.tui.commands.MetadataCommand;
 import matinilad.contentlist.ui.tui.commands.PageCommand;
+import matinilad.contentlist.ui.tui.commands.RootCommand;
 import matinilad.contentlist.ui.tui.commands.SearchCommand;
+import matinilad.contentlist.ui.tui.commands.SpaceUnitCommand;
+import matinilad.contentlist.ui.tui.commands.SystemCommand;
+import matinilad.contentlist.ui.tui.commands.ValidateSystemCommand;
 
 /**
  *
@@ -116,7 +122,7 @@ public class TUInterface {
         }
         return entry;
     }
-    
+
     private static void runTerminal(InputStream in, PrintStream out, PhantomFileSystem fs) {
         Scanner scanner = new Scanner(in);
 
@@ -131,12 +137,14 @@ public class TUInterface {
 
         TUIState state = new TUIState();
         state.setFileSystem(fs);
-
+        state.setDirectOutput(out);
+        
         Commands commands = new Commands();
 
         commands.addCommand(new HelpCommand());
         commands.addCommand(new PageCommand());
-        
+        commands.addCommand(new LinesCommand());
+
         commands.addCommand(new ListCommand());
         commands.addCommand(new ChangeDirectoryCommand());
         commands.addCommand(new AboutCommand());
@@ -145,8 +153,20 @@ public class TUInterface {
         commands.addCommand(new SearchCommand.CaseSensitive());
         commands.addCommand(new SearchCommand.Exact());
         commands.addCommand(new SearchCommand.ExactCaseSensitive());
-        
+
         commands.addCommand(new MetadataCommand());
+        commands.addCommand(new InfoCommand.Name());
+        commands.addCommand(new InfoCommand.Author());
+        commands.addCommand(new InfoCommand.Description());
+        commands.addCommand(new SpaceUnitCommand());
+
+        commands.addCommand(new RootCommand());
+        commands.addCommand(new SystemCommand.Exists());
+        commands.addCommand(new SystemCommand.Open());
+        commands.addCommand(new SystemCommand.OpenDirectory());
+        commands.addCommand(new SystemCommand.Copy());
+        commands.addCommand(new SystemCommand.Trash());
+        commands.addCommand(new ValidateSystemCommand());
 
         state.setCommands(commands);
 
@@ -170,20 +190,21 @@ public class TUInterface {
             } else {
                 argument = null;
             }
-            
+
             Command newCommand = commands.getCommand(command);
             if (newCommand != null) {
                 try {
                     String commandOutput = newCommand.execute(argument).trim();
-                    
-                    Command pageCommand = state.getCommands().getCommand("page");
-                    if (pageCommand != newCommand) {
-                        state.setCommandOutput(commandOutput);
-                        if (state.getNumberOfPages() > 0) {
-                            out.println(pageCommand.execute("1"));
+                    if (!newCommand.isDirectOutputEnabled()) {
+                        Command pageCommand = state.getCommands().getCommand("pg");
+                        if (pageCommand != null) {
+                            state.setCommandOutput(commandOutput);
+                            if (state.getNumberOfPages() > 0) {
+                                pageCommand.execute("1");
+                            }
+                        } else {
+                            out.println(commandOutput);
                         }
-                    } else {
-                        out.println(commandOutput);
                     }
                 } catch (CommandException ex) {
                     out.println(ex.getLocalizedMessage().trim());
@@ -193,7 +214,7 @@ public class TUInterface {
                     }
                 }
             } else {
-                out.println("Unknown command: " + command +"\nType help for a list of commands.");
+                out.println("Unknown command: " + command + "\nType help for a list of commands.");
             }
         }
     }

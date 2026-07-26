@@ -26,6 +26,9 @@
  */
 package matinilad.contentlist.ui.tui;
 
+import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import matinilad.contentlist.phantomfs.PhantomFileSystem;
 import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
@@ -41,8 +44,11 @@ public class TUIState {
     private PhantomFileSystem fileSystem = null;
     private PhantomPath workingDirectory = PhantomPath.of("/");
     
-    private int linesPerPage = 20;
+    private int linesPerPage = 25;
     private String[] lines = null;
+    
+    private Path rootDirectory = null;
+    private PrintStream directOutput = null;
     
     public TUIState() {
 
@@ -109,7 +115,7 @@ public class TUIState {
         return resolveToWorkingDirectory(parsePath(path));
     }
     
-    public PhantomPath checkedResolveToWorkingDirectory(String path) throws CommandException {
+    public PhantomPath resolveToWorkingDirectoryChecked(String path) throws CommandException {
         PhantomPath p = resolveToWorkingDirectory(path);
         if (!getFileSystem().exists(p)) {
             throw new CommandException(path + " does not exists!");
@@ -174,4 +180,44 @@ public class TUIState {
         
         return b.toString();
     }
+
+    public Path getRootDirectory() {
+        return rootDirectory;
+    }
+
+    public void setRootDirectory(Path rootDirectory) {
+        this.rootDirectory = rootDirectory;
+    }
+    
+    public Path getRootDirectoryChecked() throws CommandException {
+        Path root = getRootDirectory();
+        if (root == null) {
+            throw new CommandException("Root directory not set! set with root [directory]");
+        }
+        if (!Files.isDirectory(root)) {
+            throw new CommandException("Root directory is not a valid directory! "+root.toString());
+        }
+        return root;
+    }
+    
+    public Path resolveToRootDirectory(PhantomPath path) throws CommandException {
+        return path.resolveToPath(getRootDirectoryChecked());
+    }
+    
+    public Path resolveToRootDirectoryChecked(PhantomPath path) throws CommandException {
+        Path resolved = resolveToRootDirectory(path);
+        if (!Files.exists(resolved)) {
+            throw new CommandException("File does not exists: "+resolved.toString());
+        }
+        return resolved;
+    }
+
+    public PrintStream getDirectOutput() {
+        return directOutput;
+    }
+
+    public void setDirectOutput(PrintStream directOutput) {
+        this.directOutput = directOutput;
+    }
+    
 }
