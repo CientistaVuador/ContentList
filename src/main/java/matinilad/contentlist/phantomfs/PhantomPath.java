@@ -371,6 +371,42 @@ public class PhantomPath {
         );
     }
 
+    /**
+     * Normalizes this path, resolving . and .. references without accessing the file system, if this path is relative, not all .. references are guaranteed to be resolved.
+     *
+     * @return the normalized path
+     */
+    public PhantomPath normalize() {
+        if (!hasSpecialLinks()) {
+            return this;
+        }
+        List<String> objs = new ArrayList<>();
+        for (int i = 0; i < this.objects.length; i++) {
+            String obj = this.objects[i];
+            if (obj.equals(".")) {
+                continue;
+            }
+            if (obj.equals("..")) {
+                boolean found = false;
+                if (!objs.isEmpty()) {
+                    String last = objs.get(objs.size() - 1);
+                    if (!last.equals("..")) {
+                        objs.remove(objs.size() - 1);
+                        found = true;
+                    }
+                }
+                if (found || !isRelative()) {
+                    continue;
+                }
+            }
+            objs.add(obj);
+        }
+        if (objs.isEmpty()) {
+            return (isRelative() ? RELATIVE_ROOT : ABSOLUTE_ROOT);
+        }
+        return new PhantomPath(objs.toArray(String[]::new), isRelative());
+    }
+    
     @Override
     public int hashCode() {
         int hash = 5;

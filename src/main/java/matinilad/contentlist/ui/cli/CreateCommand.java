@@ -26,24 +26,33 @@
  */
 package matinilad.contentlist.ui.cli;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
+import java.io.ByteArrayOutputStream;
+import java.io.Console;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import matinilad.contentlist.phantomfs.PhantomCreator;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.GZIPOutputStream;
+import matinilad.contentlist.phantomfs.PhantomFileSystem;
 import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
-import matinilad.contentlist.phantomfs.entry.FileEntryCreator;
+import matinilad.contentlist.phantomfs.entry.FileEntryFactory;
+import matinilad.contentlist.phantomfs.entry.FileEntryMetadata;
 import matinilad.contentlist.phantomfs.entry.FileEntryWriter;
+import matinilad.contentlist.phantomfs.utils.PasswordEncryption;
+import matinilad.contentlist.phantomfs.utils.PathStream;
+import matinilad.contentlist.phantomfs.utils.TempFileList;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
@@ -52,178 +61,373 @@ import matinilad.contentlist.ui.UIUtils;
  */
 public class CreateCommand {
 
-    private static final Logger LOGGER = Logger.getLogger(CreateCommand.class.getName());
+    private static void printHelp(PrintStream out) {
+        out.println("Arguments (Can be used in any order):");
+        out.println("-out [file] - Sets the output file [REQUIRED!]");
+        out.println("-in [file] - Adds a input file");
+        out.println("-inDir [directory] - Adds the contents of a directory as input");
+        out.println("-name [name] - Sets the name of the list");
+        out.println("-author [author] - Sets the author of the list");
+        out.println("-desc [description] - Sets the description of the list");
+        out.println("-verbose - Enables verbose mode, otherwise only errors will be displayed");
+        out.println("-encrypt - Encrypts the file with a password");
+        out.println("-replace - Replaces the output file without asking, if it already exists");
+        out.println("-hidden - Includes hidden files");
+        out.println("-sampleSize [size] - Sets the sample size for files");
+        out.println("-disable [type/timestamps/size/filesAndDirectories/sha256/sample/metadata/all]");
+        out.println("  Blocks a file attribute from being written into the csv");
+        out.println("  A comma can be used for multiple attributes in a single argument");
+        out.println("  e.g.: -disable sha256,sample");
+    }
 
-    static {
-        if (!CLInterface.ENABLE_VERBOSE_LOGGING) {
-            LOGGER.setLevel(Level.WARNING);
+    public static int run(InputStream in, PrintStream out, String[] args) throws Exception {
+        if (args.length == 0) {
+            printHelp(out);
+            return 0;
         }
-    }
-
-    public static final String NAMESPACE = UIUtils.internalName() + ".cli.create";
-
-    public static boolean WRITE_FILES_AND_DIRECTORIES_COUNT = CLInterface.readBooleanProperty(NAMESPACE + ".count", true);
-    public static boolean ENABLE_SHA256 = CLInterface.readBooleanProperty(NAMESPACE + ".sha256", true);
-    public static boolean ENABLE_SAMPLE = CLInterface.readBooleanProperty(NAMESPACE + ".sample", true);
-    public static int SAMPLE_SIZE = CLInterface.readIntegerProperty(NAMESPACE + ".sampleSize", 32, 0, 64);
-    public static boolean ENABLE_METADATA = CLInterface.readBooleanProperty(NAMESPACE + ".metadata", true);
-    public static boolean ENABLE_HEADER = CLInterface.readBooleanProperty(NAMESPACE + ".header", true);
-
-    private final Path[] inputFiles;
-    private final Path outputFile;
-
-    private boolean running = false;
-
-    private int processedEntries = 0;
-    private int failedEntries = 0;
-    private int writtenEntries = 0;
-
-    private FileEntry lastEntry = null;
-    private boolean fileSizeDisplayed = false;
-
-    public CreateCommand(Path[] inputFiles, Path outputFile) {
-        this.inputFiles = Objects.requireNonNull(inputFiles, "inputFiles is null").clone();
-        this.outputFile = Objects.requireNonNull(outputFile, "outputFile is null");
-    }
-
-    private void onStart() throws IOException {
-        LOGGER.info("Initializing...");
-
-        LOGGER.log(Level.INFO, "Output is: {0}", this.outputFile.toString());
-        LOGGER.log(Level.INFO, "Number of Inputs: {0}", this.inputFiles.length);
-        for (int i = 0; i < this.inputFiles.length; i++) {
-            LOGGER.log(Level.INFO, "Input {0} is: {1}", new Object[]{i, this.inputFiles[i].toString()});
+        if (args.length == 1 && args[0].equalsIgnoreCase("-help")) {
+            printHelp(out);
+            return 0;
         }
-    }
 
-    private void logEntriesCount() {
-        LOGGER.log(Level.INFO,
-                "Entries (Total Processed): {0}; Entries (Failed): {1}; Entries (Written): {2}",
-                new Object[]{this.processedEntries, this.failedEntries, this.writtenEntries}
-        );
-    }
+        Scanner scanner = new Scanner(in);
 
-    private void onFileError(Path path, IOException error) throws IOException {
-        this.processedEntries++;
-        this.failedEntries++;
+        Path outputFile = null;
+        List<Path> inputFiles = new ArrayList<>();
+        String name = null;
+        String author = null;
+        String description = null;
+        boolean verbose = false;
+        boolean encrypt = false;
+        boolean replace = false;
+        boolean hiddenFiles = false;
+        int sampleSize = 32;
+        FileEntryWriter.Flags flags = new FileEntryWriter.Flags();
 
-        LOGGER.log(Level.WARNING, "Failed: " + path.toString(), error);
-        logEntriesCount();
-    }
+        for (int i = 0; i < args.length; i++) {
+            String argument = args[i].toLowerCase();
+            String nextArgument = null;
+            if ((i + 1) < args.length) {
+                nextArgument = args[i + 1];
+            }
 
-    private void onEntryStart(FileEntry entry) throws IOException {
-        LOGGER.log(Level.INFO, "Now Processing: {0}", entry.getPath().toString());
-        this.fileSizeDisplayed = false;
-    }
+            switch (argument) {
+                case "-verbose" -> {
+                    verbose = true;
+                    continue;
+                }
+                case "-encrypt" -> {
+                    encrypt = true;
+                    continue;
+                }
+                case "-replace" -> {
+                    replace = true;
+                    continue;
+                }
+                case "-hidden" -> {
+                    hiddenFiles = true;
+                    continue;
+                }
+            }
 
-    private void onEntryFinish(FileEntry entry) throws IOException {
-        this.lastEntry = entry;
-        this.processedEntries++;
-        this.writtenEntries++;
+            if (nextArgument == null) {
+                out.println("A argument is required for " + argument);
+                out.println("Type -help for a list of arguments");
+                return -1;
+            }
 
-        LOGGER.log(Level.INFO, "Finished: {0}", entry.getPath().toString());
-        logEntriesCount();
+            i++;
 
+            switch (argument) {
+                case "-out" -> {
+                    if (outputFile != null) {
+                        out.println("Attempting to set output file twice!");
+                        return -1;
+                    }
+                    try {
+                        outputFile = Path.of(nextArgument).toAbsolutePath().normalize();
+                    } catch (InvalidPathException ex) {
+                        out.println("Invalid output path: " + nextArgument);
+                        ex.printStackTrace(out);
+                        return -1;
+                    }
+                }
+                case "-in" -> {
+                    try {
+                        inputFiles.add(Path.of(nextArgument));
+                    } catch (InvalidPathException ex) {
+                        out.println("Invalid input path: " + nextArgument);
+                        ex.printStackTrace(out);
+                        return -1;
+                    }
+                }
+                case "-indir" -> {
+                    Path directory;
+                    try {
+                        directory = Path.of(nextArgument);
+                    } catch (InvalidPathException ex) {
+                        out.println("Invalid input directory path: " + nextArgument);
+                        ex.printStackTrace(out);
+                        return -1;
+                    }
+                    if (!Files.isDirectory(directory)) {
+                        out.println("Not a directory: " + directory);
+                        return -1;
+                    }
+                    try {
+                        inputFiles.addAll(Files.list(directory).toList());
+                    } catch (IOException | UncheckedIOException ex) {
+                        out.println("Failed to add contents of " + directory);
+                        ex.printStackTrace(out);
+                        return -1;
+                    }
+                }
+                case "-name", "-author", "-desc", "-description" -> {
+                    switch (argument) {
+                        case "-name" -> {
+                            name = nextArgument;
+                        }
+                        case "-author" -> {
+                            author = nextArgument;
+                        }
+                        case "-desc", "-description" -> {
+                            description = nextArgument;
+                        }
+                    }
+                }
+                case "-samplesize" -> {
+                    try {
+                        sampleSize = Integer.parseInt(nextArgument);
+                    } catch (NumberFormatException ex) {
+                        out.println("Not a integer: " + nextArgument);
+                        ex.printStackTrace(out);
+                        return -1;
+                    }
+                    if (sampleSize < 0) {
+                        out.println("Sample size is negative");
+                        return -1;
+                    }
+                }
+                case "-disable" -> {
+                    String[] split = nextArgument.split(",");
+                    if (split.length == 0) {
+                        out.println("Disable argument is empty: " + nextArgument);
+                        return -1;
+                    }
+                    for (String s : split) {
+                        switch (s.toLowerCase()) {
+                            case "type" -> {
+                                flags.setTypeEnabled(false);
+                            }
+                            case "timestamps" -> {
+                                flags.setTimestampsEnabled(false);
+                            }
+                            case "size" -> {
+                                flags.setSizeEnabled(false);
+                            }
+                            case "filesanddirectories" -> {
+                                flags.setFilesAndDirectoriesEnabled(false);
+                            }
+                            case "sha256" -> {
+                                flags.setSha256Enabled(false);
+                            }
+                            case "sample" -> {
+                                flags.setSampleEnabled(false);
+                            }
+                            case "metadata" -> {
+                                flags.setMetadataEnabled(false);
+                            }
+                            case "all" -> {
+                                flags.setAllDisabled(true);
+                            }
+                            default -> {
+                                out.println("Unknown disable option: " + s);
+                                return -1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (outputFile == null) {
+            out.println("Output file must be set!");
+            return -1;
+        }
+
+        Path filename = outputFile.getFileName();
+        if (filename == null) {
+            out.println("Output file has no name!");
+            return -1;
+        }
+
+        if (!filename.toString().contains(".")) {
+            String ext = (encrypt ? "bin" : "csv");
+            String newName = filename.toString() + "." + ext;
+            if (outputFile.getParent() == null) {
+                outputFile = outputFile.getFileSystem().getPath(newName);
+            } else {
+                outputFile = outputFile.getParent().resolve(newName);
+            }
+        }
+
+        if (Files.exists(outputFile)) {
+            if (Files.isDirectory(outputFile)) {
+                out.println("Output file is a directory!");
+                return -1;
+            }
+
+            if (!replace) {
+                out.println("Replace " + outputFile + " ?");
+                out.print("[Y/N:]");
+                String response = scanner.nextLine().toLowerCase();
+                if (!response.equals("y") && !response.equals("yes")) {
+                    out.println("Operation canceled");
+                    return 0;
+                }
+            }
+        }
+
+        if (sampleSize == 0) {
+            flags.setSampleEnabled(false);
+        } else if (!flags.isSampleEnabled()) {
+            sampleSize = 0;
+        }
+
+        TempFileList temp = new TempFileList();
         try {
-            String metadata = System.getProperty(NAMESPACE + ".entry.metadata." + entry.getPath().toString());
-            if (metadata != null) {
-                File metadataFile = new File(metadata);
-                if (metadataFile.isFile()) {
-                    Properties properties = new Properties();
-                    try (FileReader reader = new FileReader(metadataFile, StandardCharsets.UTF_8)) {
-                        properties.load(reader);
+            if (outputFile.getParent() != null) {
+                temp.createDirectories(outputFile.getParent());
+            }
+            try (OutputStream fileOut = temp.newOutputStream(outputFile)) {
+                byte[] userSalt = null;
+                char[] password = null;
+                try {
+                    if (encrypt) {
+                        Console console = System.console();
+                        if (console == null) {
+                            out.println("Console is not available for password reading");
+                            return -1;
+                        }
+                        while (true) {
+                            char[] pass = console.readPassword("[%s]", "Password:");
+                            try {
+                                if (pass == null || pass.length == 0) {
+                                    out.println("Password is empty, try again");
+                                    continue;
+                                }
+                                char[] confirmPass = console.readPassword("[%s]", "Confirm Password:");
+                                try {
+                                    if (!Arrays.equals(pass, confirmPass)) {
+                                        out.println("Passwords are not equal, try again");
+                                        continue;
+                                    }
+                                } finally {
+                                    if (confirmPass != null) {
+                                        Arrays.fill(confirmPass, '\0');
+                                    }
+                                }
+                                password = pass.clone();
+                            } finally {
+                                if (pass != null) {
+                                    Arrays.fill(pass, '\0');
+                                }
+                            }
+                            break;
+                        }
+                        out.println("Type random characters below or leave empty to skip.");
+                        out.print("[Salt:]");
+                        String salt = scanner.nextLine();
+                        if (salt != null && salt.length() > 0) {
+                            userSalt = salt.getBytes(StandardCharsets.UTF_8);
+                        }
                     }
-                    for (Entry<Object, Object> e:properties.entrySet()) {
-                        entry.getMetadata().writeString(PhantomPath.of(e.getKey().toString()), e.getValue().toString());
+
+                    boolean finalVerbose = verbose;
+
+                    AtomicInteger errorCount = new AtomicInteger(0);
+
+                    PhantomFileSystem fs = new PhantomFileSystem();
+                    FileEntryFactory factory = new FileEntryFactory();
+                    factory.setSampleSize(sampleSize);
+                    factory.setSha256Enabled(flags.isSha256Enabled());
+                    PathStream stream = new PathStream(inputFiles.toArray(Path[]::new), hiddenFiles);
+                    stream.stream((e) -> {
+                        Path file = e.getPath();
+                        try {
+                            if (e.getError() != null) {
+                                throw e.getError();
+                            }
+                            if (finalVerbose) {
+                                if (Files.isRegularFile(file)) {
+                                    long size = Files.size(file);
+                                    out.print("[" + UIUtils.formatBytesShort(size) + "] ");
+                                }
+                                out.println(file.toString());
+                            }
+                            FileEntry entry = factory.newFileEntry(e.getRoot(), file);
+                            fs.writeEntry(entry);
+                        } catch (Throwable t) {
+                            errorCount.incrementAndGet();
+                            out.println("File rejected: " + file);
+                            t.printStackTrace(out);
+                        }
+                    });
+                    fs.validate();
+
+                    FileEntry rootEntry = fs.getEntry(PhantomPath.of("/"));
+                    FileEntryMetadata meta = rootEntry.getMetadata();
+                    if (name != null) {
+                        meta.writeString(FileEntry.METADATA_NAME, name);
                     }
-                    LOGGER.log(Level.INFO, "Metadata Set For {0}", entry.getPath().toString());
-                } else {
-                    throw new IOException("not a file.");
+                    if (author != null) {
+                        meta.writeString(FileEntry.METADATA_AUTHOR, author);
+                    }
+                    if (description != null) {
+                        meta.writeString(FileEntry.METADATA_DESCRIPTION, description);
+                    }
+
+                    if (verbose) {
+                        out.println("Total size: " + UIUtils.formatBytes(rootEntry.getSize()));
+                        out.println("Files: " + rootEntry.getFiles());
+                        out.println("Directories: " + rootEntry.getDirectories());
+                        out.println("Errors: " + errorCount.get());
+                    } else {
+                        if (errorCount.get() != 0) {
+                            out.println("Errors: " + errorCount.get());
+                        }
+                    }
+                    
+                    ByteArrayOutputStream arrayOut = new ByteArrayOutputStream();
+
+                    OutputStream toOutput = fileOut;
+                    if (password != null) {
+                        toOutput = new GZIPOutputStream(arrayOut);
+                    }
+
+                    try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(toOutput, StandardCharsets.UTF_8), flags)) {
+                        FileEntry[] entries = fs.listEntries();
+                        for (FileEntry e : entries) {
+                            writer.writeFileEntry(e);
+                        }
+                    }
+
+                    if (password != null) {
+                        toOutput.close();
+
+                        fileOut.write(PasswordEncryption.encrypt(arrayOut.toByteArray(), userSalt, password));
+                    }
+
+                    return errorCount.get();
+                } finally {
+                    if (password != null) {
+                        Arrays.fill(password, '\0');
+                    }
                 }
             }
         } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Failed To Set Metadata Of "+entry.getPath().toString(), t);
-        }
-    }
-
-    private void onEntryProgressUpdate(long current, long total) throws IOException {
-        if (!this.fileSizeDisplayed) {
-            LOGGER.log(Level.INFO, "File Size is: {0}", UIUtils.formatBytes(total));
-            this.fileSizeDisplayed = true;
-        }
-    }
-
-    private void onFinish() throws IOException {
-        LOGGER.info("Done!");
-        logEntriesCount();
-        LOGGER.log(Level.INFO, "Total Size: {0}", UIUtils.formatBytes(this.lastEntry.getSize()));
-        LOGGER.log(Level.INFO, "Files: {0}; Directories: {1} ", new Object[]{this.lastEntry.getFiles(), this.lastEntry.getDirectories()});
-    }
-
-    public int run() {
-        if (this.running) {
-            throw new RuntimeException("already running!");
-        }
-        this.running = true;
-
-        try {
-            int flags = 0;
-            if (!WRITE_FILES_AND_DIRECTORIES_COUNT) {
-                flags |= FileEntryWriter.FLAG_NO_FILES_AND_DIRECTORIES;
-            }
-            if (!ENABLE_SHA256) {
-                flags |= FileEntryWriter.FLAG_NO_SHA256;
-            }
-            if (!ENABLE_SAMPLE || SAMPLE_SIZE == 0) {
-                flags |= FileEntryWriter.FLAG_NO_SAMPLE;
-            }
-            if (!ENABLE_METADATA) {
-                flags |= FileEntryWriter.FLAG_NO_METADATA;
-            }
-            if (!ENABLE_HEADER) {
-                flags |= FileEntryWriter.FLAG_NO_HEADER;
-                LOGGER.warning("Header is Disabled! This Will Cause Compatibility Issues!");
-            }
-
-            try (FileEntryWriter writer = new FileEntryWriter(new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(this.outputFile), StandardCharsets.UTF_8)), flags)) {
-                onStart();
-
-                PhantomCreator creator = new PhantomCreator() {
-                    @Override
-                    protected void onEntry(FileEntry entry) throws IOException, InterruptedException {
-                        onEntryFinish(entry);
-                        writer.writeFileEntry(entry);
-                    }
-
-                    @Override
-                    protected void onFileRejected(Path file, IOException reason) throws IOException, InterruptedException {
-                        onFileError(file, reason);
-                    }
-                };
-                FileEntryCreator entryCreator = new FileEntryCreator() {
-                    @Override
-                    protected void onEntryCreated(FileEntry entry) throws IOException, InterruptedException {
-                        onEntryStart(entry);
-                    }
-
-                    @Override
-                    protected void onEntryProgress(FileEntry entry, long bytes) throws IOException, InterruptedException {
-                        onEntryProgressUpdate(bytes, entry.getSize());
-                    }
-                };
-
-                entryCreator.setSha256Enabled(ENABLE_SHA256);
-                entryCreator.setSampleSize(SAMPLE_SIZE);
-
-                creator.setFileEntryCreator(entryCreator);
-                creator.create(this.inputFiles);
-
-                onFinish();
-            }
-            return this.failedEntries;
-        } catch (IOException | InterruptedException ex) {
-            LOGGER.log(Level.SEVERE, "Operation Failed!", ex);
-            return -1;
+            temp.deleteFiles();
+            throw t;
         }
     }
 

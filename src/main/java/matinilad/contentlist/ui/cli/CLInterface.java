@@ -57,15 +57,15 @@ public class CLInterface {
     
     private static void printHelp(PrintStream out) {
         out.println("Available commands:");
-        out.println("-create [output csv file] [input file/directory] [input file/directory]...");
+        out.println("-create - Creates a new list");
         out.println("-validate [input csv file] [root directory]");
     }
 
-    public static void run(PrintStream out, String[] args) {
+    public static void run(PrintStream out, String[] args) throws Exception {
         System.exit(runCLI(out, args));
     }
     
-    private static int runCLI(PrintStream out, String[] args) {
+    private static int runCLI(PrintStream out, String[] args) throws Exception {
         Objects.requireNonNull(out, "out is null");
         if (args == null || args.length == 0) {
             out.println("No arguments!");
@@ -74,7 +74,7 @@ public class CLInterface {
         }
         switch (args[0]) {
             case "-create" -> {
-                return create(out, Arrays.copyOfRange(args, 1, args.length));
+                return CreateCommand.run(System.in, out, Arrays.copyOfRange(args, 1, args.length));
             }
             case "-validate" -> {
                 return validate(out, Arrays.copyOfRange(args, 1, args.length));
@@ -88,62 +88,7 @@ public class CLInterface {
             }
         }
     }
-
-    private static int create(PrintStream out, String[] args) {
-        if (args.length == 0) {
-            out.println("No arguments!");
-            out.println("Usage:");
-            out.println("[output csv file] [input file/directory] [input file/directory]...");
-            return -1;
-        }
-
-        Path outputFile;
-        try {
-            outputFile = Path.of(args[0]);
-        } catch (InvalidPathException ex) {
-            out.println("Invalid output file!");
-            out.println(ex.getLocalizedMessage());
-            ex.printStackTrace(out);
-            return -1;
-        }
-
-        try {
-            Path parent = outputFile.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-
-                if (!Files.exists(parent)) {
-                    throw new IOException("Reason unknown");
-                }
-            }
-        } catch (IOException ex) {
-            out.println("Failed to create output file directories!");
-            out.println(ex.getLocalizedMessage());
-            ex.printStackTrace(out);
-            return -1;
-        }
-
-        if (Files.isDirectory(outputFile)) {
-            out.println("Output file is a directory!");
-            return -1;
-        }
-
-        Path[] inputFiles = new Path[args.length - 1];
-        for (int i = 1; i < args.length; i++) {
-            try {
-                inputFiles[i - 1] = Path.of(args[i]);
-            } catch (InvalidPathException ex) {
-                out.println("Invalid input file! (index " + (i - 1) + ")");
-                out.println(ex.getLocalizedMessage());
-                ex.printStackTrace(out);
-                return -1;
-            }
-        }
-
-        CreateCommand create = new CreateCommand(inputFiles, outputFile);
-        return create.run();
-    }
-
+    
     private static int validate(PrintStream out, String[] args) {
         if (args.length == 0) {
             out.println("No arguments!");

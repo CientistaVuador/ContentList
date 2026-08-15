@@ -24,6 +24,7 @@ public class FileEntry {
 
     private long created = System.currentTimeMillis();
     private long modified = System.currentTimeMillis();
+    private long access = System.currentTimeMillis();
     private long size = 0;
     private int files = 0;
     private int directories = 0;
@@ -67,6 +68,14 @@ public class FileEntry {
 
     public void setModified(long modified) {
         this.modified = modified;
+    }
+
+    public long getAccess() {
+        return access;
+    }
+
+    public void setAccess(long access) {
+        this.access = access;
     }
 
     public long getSize() {

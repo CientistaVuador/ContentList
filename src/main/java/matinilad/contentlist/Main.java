@@ -12,7 +12,7 @@ import matinilad.contentlist.ui.tui.TUInterface;
  */
 public class Main {
     
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         if (args == null || args.length == 0) {
             GUInterface.run(new String[] {});
             return;

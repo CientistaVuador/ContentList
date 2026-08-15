@@ -46,7 +46,6 @@ import matinilad.contentlist.phantomfs.entry.FileEntryType;
 public class PhantomFileSystem {
 
     private static class InternalFile {
-
         FileEntry entry = null;
         String name = null;
         boolean directory = false;
@@ -311,6 +310,14 @@ public class PhantomFileSystem {
             listEntries(p, entries, processed);
         }
         return entries.toArray(FileEntry[]::new);
+    }
+    
+    public FileEntry[] listEntries(PhantomPath path) {
+        return listEntries(new PhantomPath[] {path});
+    }
+    
+    public FileEntry[] listEntries() {
+        return listEntries(PhantomPath.of("/"));
     }
     
     private void search(
