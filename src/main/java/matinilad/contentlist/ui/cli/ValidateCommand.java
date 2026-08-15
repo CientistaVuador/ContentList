@@ -26,21 +26,24 @@
  */
 package matinilad.contentlist.ui.cli;
 
-import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.Console;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.util.HexFormat;
-import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Arrays;
+import java.util.Scanner;
+import java.util.zip.GZIPInputStream;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.entry.FileEntryReader;
 import matinilad.contentlist.phantomfs.entry.FileEntryValidator;
-import matinilad.contentlist.phantomfs.entry.FileEntryValidatorReason;
 import matinilad.contentlist.phantomfs.entry.FileEntryValidatorResult;
+import matinilad.contentlist.phantomfs.utils.PasswordEncryption;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
@@ -49,182 +52,173 @@ import matinilad.contentlist.ui.UIUtils;
  */
 public class ValidateCommand {
 
-    private static final Logger LOGGER = Logger.getLogger(ValidateCommand.class.getName());
+    private static void printHelp(PrintStream out) {
+        out.println("Arguments (Can be used in any order):");
+        out.println("-in [input file] - Sets the input file [REQUIRED!]");
+        out.println("-root [root directory] - Sets the root directory [REQUIRED!]");
+        out.println("-verbose - Enables verbose mode, otherwise only errors will be displayed");
+        out.println("-decrypt - Use this if the file is encrypted");
+    }
 
-    static {
-        if (!CLInterface.ENABLE_VERBOSE_LOGGING) {
-            LOGGER.setLevel(Level.WARNING);
+    public static int run(InputStream in, PrintStream out, String[] args) throws Exception {
+        if (args.length == 0) {
+            printHelp(out);
+            return 0;
         }
-    }
-
-    private final Path inputFile;
-    private final Path rootDirectory;
-
-    private boolean running = false;
-    private FileEntry currentEntry = null;
-    private Path currentFile = null;
-    private boolean refused = false;
-    private boolean sizeDisplayed = false;
-    
-    private int acceptedEntries = 0;
-    private int refusedEntries = 0;
-
-    public ValidateCommand(Path inputFile, Path rootDirectory) {
-        this.inputFile = Objects.requireNonNull(inputFile, "inputFile is null");
-        this.rootDirectory = Objects.requireNonNull(rootDirectory, "rootDirectory is null");;
-    }
-
-    private void onStart() throws IOException {
-        LOGGER.info("Initializing...");
-        LOGGER.log(Level.INFO, "Input File is: {0}", this.inputFile.toString());
-        LOGGER.log(Level.INFO, "Root Directory is: {0}", this.rootDirectory.toString());
-    }
-    
-    private void onEntryStart(FileEntry entry, Path fileToValidate) throws IOException, InterruptedException {
-        this.currentEntry = entry;
-        this.currentFile = fileToValidate;
-        this.refused = false;
-        this.sizeDisplayed = false;
-
-        LOGGER.log(Level.INFO, "Now Validating: {0}; Path is: {1}", new Object[]{entry.getPath().toString(), fileToValidate.toString()});
-    }
-
-    private void onEntryAccepted(FileEntryValidatorReason reason, Object expected, Object found) throws IOException, InterruptedException {
-        HexFormat hex = HexFormat.of();
-        String reasonString = "";
-        switch (reason) {
-            case EXISTENCE -> {
-                reasonString = "File Exists!";
-            }
-            case TYPE -> {
-                reasonString = "File Type is Correct; "+expected.toString();
-            }
-            case SIZE -> {
-                reasonString = "File Size is Correct; "+UIUtils.formatBytes((long) expected);
-            }
-            case SAMPLE -> {
-                reasonString = "File Sample is Correct; "+hex.formatHex((byte[]) expected);
-            }
-            case HASH -> {
-                reasonString = "File Hash is Correct; "+hex.formatHex((byte[]) expected);
-            }
+        if (args.length == 1 && args[0].equalsIgnoreCase("-help")) {
+            printHelp(out);
+            return 0;
         }
-        
-        LOGGER.log(Level.INFO, "Accepted For {0}; {1}", new Object[]{reason.name(), reasonString});
-    }
 
-    private void onEntryRefused(FileEntryValidatorReason reason, Object expected, Object found) throws IOException, InterruptedException {
-        this.refused = true;
-        
-        String reasonText = "";
-        HexFormat hex = HexFormat.of();
-        switch (reason) {
-            case EXISTENCE -> {
-                reasonText = "File Does Not Exists!";
+        Path inputFile = null;
+        Path rootDirectory = null;
+        boolean verbose = false;
+        boolean decrypt = false;
+
+        Scanner scanner = new Scanner(in);
+
+        for (int i = 0; i < args.length; i++) {
+            String argument = args[i].toLowerCase();
+            String nextArgument = null;
+            if ((i + 1) < args.length) {
+                nextArgument = args[i + 1];
             }
-            case TYPE -> {
-                reasonText = "Wrong Type; Expected "+expected.toString()+"; Found "+found.toString();
-            }
-            case SIZE -> {
-                reasonText = "Wrong Size; Expected "+UIUtils.formatBytes((long) expected)+"; Found "+UIUtils.formatBytes((long) found);
-            }
-            case SAMPLE -> {
-                reasonText = "Wrong Sample; Expected "+hex.formatHex((byte[]) expected)+"; Found "+hex.formatHex((byte[]) found);
-            }
-            case HASH -> {
-                reasonText = "Wrong Hash; Expected "+hex.formatHex((byte[]) expected)+"; Found "+hex.formatHex((byte[]) found);
-            }
-        }
-        
-        LOGGER.log(Level.WARNING, "Refused! Entry {0}; File: {1}; {2}", new Object[]{this.currentEntry.getPath().toString(), this.currentFile.toString(), reasonText});
-    }
 
-    private void onEntryProgressUpdate(long current, long total) throws IOException, InterruptedException {
-        if (!this.sizeDisplayed) {
-            LOGGER.log(Level.INFO, "Now Reading File: {0}; Size is {1}", new Object[]{this.currentFile.toString(), UIUtils.formatBytes(total)});
-            this.sizeDisplayed = true;
-        }
-    }
-    
-    private void onEntryFinish() throws IOException, InterruptedException {
-        String result;
-        if (this.refused) {
-            this.refusedEntries++;
-            result = "Failed!";
-        } else {
-            this.acceptedEntries++;
-            result = "Success!";
-        }
-        
-        LOGGER.log(Level.INFO, "Entry Finished Validating; {0}", result);
-    }
-
-    private void onFinish() throws IOException, InterruptedException {
-        LOGGER.log(Level.INFO, "Done! {0} Refused; {1} Accepted; {2} In Total.", new Object[]{this.refusedEntries, this.acceptedEntries, this.acceptedEntries+this.refusedEntries});
-    }
-    
-    public int run() {
-        if (this.running) {
-            throw new RuntimeException("already running!");
-        }
-        this.running = true;
-        
-        try {
-            try (FileEntryReader reader = new FileEntryReader(new BufferedReader(new InputStreamReader(Files.newInputStream(this.inputFile), StandardCharsets.UTF_8)))) {
-                onStart();
-
-                FileEntry entry;
-                while ((entry = reader.readEntry()) != null) {
-                    if (Thread.interrupted()) {
-                        throw new InterruptedException();
-                    }
-
-                    FileEntryValidator validator = new FileEntryValidator(rootDirectory, entry) {
-                        @Override
-                        protected void onEntryAccepted(FileEntryValidatorReason reason) throws IOException, InterruptedException {
-                            FileEntry e = getEntry();
-                            switch (reason) {
-                                case EXISTENCE -> {
-                                    ValidateCommand.this.onEntryAccepted(reason, true, true);
-                                }
-                                case TYPE -> {
-                                    ValidateCommand.this.onEntryAccepted(reason, e.getType(), e.getType());
-                                }
-                                case SIZE -> {
-                                    ValidateCommand.this.onEntryAccepted(reason, e.getSize(), e.getSize());
-                                }
-                                case SAMPLE -> {
-                                    ValidateCommand.this.onEntryAccepted(reason, e.getSample(), e.getSample());
-                                }
-                                case HASH -> {
-                                    ValidateCommand.this.onEntryAccepted(reason, e.getSha256(), e.getSha256());
-                                }
-                            }
-                        }
-
-                        @Override
-                        protected void onProgressUpdate(long bytes) throws IOException, InterruptedException {
-                            onEntryProgressUpdate(bytes, getEntry().getSize());
-                        }
-                    };
-
-                    onEntryStart(entry, validator.getPath());
-                    FileEntryValidatorResult result = validator.validate();
-                    if (!result.success()) {
-                        onEntryRefused(
-                                result.getReason(),
-                                result.getExpectedValue(),
-                                result.getFoundValue());
-                    }
-                    onEntryFinish();
+            switch (argument) {
+                case "-verbose" -> {
+                    verbose = true;
+                    continue;
                 }
-
-                onFinish();
+                case "-decrypt" -> {
+                    decrypt = true;
+                    continue;
+                }
             }
-            return this.refusedEntries;
-        } catch (IOException | InterruptedException ex) {
-            LOGGER.log(Level.SEVERE, "Operation Failed!", ex);
+
+            if (nextArgument == null) {
+                out.println("A argument is required for " + argument);
+                out.println("Type -help for a list of arguments");
+                return -1;
+            }
+
+            i++;
+
+            switch (argument) {
+                case "-in" -> {
+                    try {
+                        inputFile = Path.of(nextArgument).toRealPath();
+                        if (!Files.isRegularFile(inputFile)) {
+                            throw new IOException("not a valid file: " + inputFile);
+                        }
+                    } catch (IOException | InvalidPathException ex) {
+                        out.println("Invalid input file: " + nextArgument);
+                        ex.printStackTrace(out);
+                        return -1;
+                    }
+                }
+                case "-root" -> {
+                    try {
+                        rootDirectory = Path.of(nextArgument).toRealPath();
+                        if (!Files.isDirectory(rootDirectory)) {
+                            throw new IOException("not a valid directory: " + rootDirectory);
+                        }
+                    } catch (IOException | InvalidPathException ex) {
+                        out.println("Invalid root directory: " + nextArgument);
+                        ex.printStackTrace(out);
+                        return -1;
+                    }
+                }
+            }
+        }
+
+        if (inputFile == null) {
+            out.println("Input file not set!");
             return -1;
         }
+
+        if (rootDirectory == null) {
+            out.println("Root directory not set!");
+            return -1;
+        }
+
+        if (!decrypt && inputFile.getFileName().toString().toLowerCase().endsWith(".bin")) {
+            out.println("Is " + inputFile.toString() + " encrypted?");
+            out.print("[Y/N:]");
+            String response = scanner.nextLine();
+            if (response.equalsIgnoreCase("y") || response.equalsIgnoreCase("yes")) {
+                decrypt = true;
+            }
+        }
+
+        InputStream input;
+        if (decrypt) {
+            byte[] data = Files.readAllBytes(inputFile);
+
+            Console console = System.console();
+            if (console == null) {
+                out.println("Console is not available for password reading");
+                return -1;
+            }
+
+            while (true) {
+                char[] password = console.readPassword("[%s]", "Password:");
+                try {
+                    if (password == null || password.length == 0) {
+                        out.println("Password is empty");
+                        continue;
+                    }
+                    try {
+                        input = new GZIPInputStream(new ByteArrayInputStream(PasswordEncryption.decrypt(data, password)));
+                        break;
+                    } catch (PasswordEncryption.IncorrectPasswordException ex) {
+                        out.println("Incorrect password or corrupted file, try again");
+                        continue;
+                    }
+                } finally {
+                    if (password != null) {
+                        Arrays.fill(password, '\0');
+                    }
+                }
+            }
+        } else {
+            input = Files.newInputStream(inputFile);
+        }
+
+        int errors = 0;
+
+        try (FileEntryReader reader = new FileEntryReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
+            FileEntry entry;
+            while ((entry = reader.readEntry()) != null) {
+                FileEntryValidator validator = new FileEntryValidator(rootDirectory, entry);
+                Path file = validator.getPath();
+                try {
+                    if (verbose) {
+                        if (Files.isRegularFile(file)) {
+                            out.println("[" + UIUtils.formatBytesShort(Files.size(file)) + "] " + file.toString());
+                        } else {
+                            out.println(file.toString());
+                        }
+                    }
+                    FileEntryValidatorResult result = validator.validate();
+                    if (!result.success()) {
+                        throw new IOException(UIUtils.getFailureReason(result));
+                    }
+                } catch (IOException ex) {
+                    errors++;
+                    out.println("Failed: " + file.toString());
+                    ex.printStackTrace(out);
+                }
+            }
+        }
+        
+        if (verbose || errors != 0) {
+            out.println("Errors: "+errors);
+        }
+        
+        return errors;
+    }
+
+    private ValidateCommand() {
+
     }
 }

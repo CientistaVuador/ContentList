@@ -33,7 +33,7 @@ import java.util.HexFormat;
 import java.util.Objects;
 
 /**
- *
+ * TODO: FINISH
  * @author Cien
  */
 public class FileEntryWriter implements Closeable {

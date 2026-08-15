@@ -431,4 +431,7 @@ public class CreateCommand {
         }
     }
 
+    private CreateCommand() {
+        
+    }
 }

@@ -26,19 +26,21 @@
  */
 package matinilad.contentlist.phantomfs.entry;
 
+import java.util.HexFormat;
 import java.util.Objects;
+import matinilad.contentlist.ui.UIUtils;
 
 /**
  *
  * @author Cien
  */
 public class FileEntryValidatorResult {
-    
+
     private final FileEntryValidator validator;
     private final FileEntryValidatorReason reason;
     private final Object expectedValue;
     private final Object foundValue;
-    
+
     public FileEntryValidatorResult(
             FileEntryValidator validator,
             FileEntryValidatorReason reason,
@@ -53,7 +55,7 @@ public class FileEntryValidatorResult {
     public FileEntryValidator getValidator() {
         return validator;
     }
-    
+
     public FileEntryValidatorReason getReason() {
         return reason;
     }
@@ -65,7 +67,7 @@ public class FileEntryValidatorResult {
     public Object getFoundValue() {
         return foundValue;
     }
-    
+
     public boolean success() {
         return getReason().equals(FileEntryValidatorReason.SUCCESS);
     }

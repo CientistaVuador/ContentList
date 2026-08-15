@@ -35,6 +35,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
+import java.util.HexFormat;
+import matinilad.contentlist.phantomfs.entry.FileEntryValidatorResult;
 
 /**
  *
@@ -54,7 +56,7 @@ public class UIUtils {
     public static final long GIBIBYTE = BinarySpaceUnit.GIBIBYTE.getSize();
     public static final long TEBIBYTE = BinarySpaceUnit.TEBIBYTE.getSize();
 
-    private static SpaceUnit spaceUnit = DecimalSpaceUnit.BYTE;
+    private static SpaceUnit spaceUnit = BinarySpaceUnit.BYTE;
 
     static {
         String unit = System.getProperty(UIUtils.internalName() + ".unit");
@@ -132,6 +134,36 @@ public class UIUtils {
             t.printStackTrace(print);
         }
         return out.toString(StandardCharsets.UTF_8);
+    }
+    
+    public static String getFailureReason(FileEntryValidatorResult result) {
+        if (result.success()) {
+            return null;
+        }
+        Object expected = result.getExpectedValue();
+        Object found = result.getFoundValue();
+
+        String reasonText = "No reason";
+        HexFormat hex = HexFormat.of();
+        switch (result.getReason()) {
+            case EXISTENCE -> {
+                reasonText = "File does not exists!";
+            }
+            case TYPE -> {
+                reasonText = "Wrong type; Expected " + expected.toString() + "; Found " + found.toString();
+            }
+            case SIZE -> {
+                reasonText = "Wrong size; Expected " + UIUtils.formatBytes((long) expected) + "; Found " + UIUtils.formatBytes((long) found);
+            }
+            case SAMPLE -> {
+                reasonText = "Wrong sample; Expected " + hex.formatHex((byte[]) expected) + "; Found " + hex.formatHex((byte[]) found);
+            }
+            case HASH -> {
+                reasonText = "Wrong hash; Expected " + hex.formatHex((byte[]) expected) + "; Found " + hex.formatHex((byte[]) found);
+            }
+        }
+        
+        return reasonText;
     }
 
     private static String readFile(String name) {
