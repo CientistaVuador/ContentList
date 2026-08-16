@@ -516,7 +516,7 @@ public class NewDialog extends javax.swing.JDialog {
             StatusDialog progressBar,
             File outputFile,
             List<File> inputFiles,
-            int flags, int sampleSize,
+            FileEntryWriter.Flags flags, int sampleSize,
             String name, String author, String description
     ) throws IOException, InterruptedException {
         LOGGER.log(Level.INFO, "creating list on {0} for {1}",
@@ -581,8 +581,8 @@ public class NewDialog extends javax.swing.JDialog {
                     }
                 }
             };
-            fileEntryCreator.setSha256Enabled((flags & FileEntryWriter.FLAG_NO_SHA256) == 0);
-            if ((flags & FileEntryWriter.FLAG_NO_SAMPLE) == 0) {
+            fileEntryCreator.setSha256Enabled(flags.isSha256Enabled());
+            if (flags.isSampleEnabled()) {
                 fileEntryCreator.setSampleSize(sampleSize);
             } else {
                 fileEntryCreator.setSampleSize(0);
@@ -624,22 +624,21 @@ public class NewDialog extends javax.swing.JDialog {
         dialog.setTitle(output.toString());
         LOGGER.addHandler(dialog.getLoggerHandler());
 
-        int flags = 0;
+        FileEntryWriter.Flags flags = new FileEntryWriter.Flags();
 
         if (this.noFilesAndDirectoriesButton.isSelected()) {
-            flags |= FileEntryWriter.FLAG_NO_FILES_AND_DIRECTORIES;
+            flags.setFilesAndDirectoriesEnabled(false);
         }
         if (this.noSha256Button.isSelected()) {
-            flags |= FileEntryWriter.FLAG_NO_SHA256;
+            flags.setSha256Enabled(false);
         }
         if (this.noFileSampleButton.isSelected()) {
-            flags |= FileEntryWriter.FLAG_NO_SAMPLE;
+            flags.setSampleEnabled(false);
         }
         if (this.noMetadataButton.isSelected()) {
-            flags |= FileEntryWriter.FLAG_NO_METADATA;
+            flags.setMetadataEnabled(false);
         }
-
-        int finalFlags = flags;
+        
         int sampleSize = (int) this.fileSampleSizeSpinner.getValue();
 
         String name = this.metadataNameField.getText();
@@ -649,7 +648,7 @@ public class NewDialog extends javax.swing.JDialog {
         AtomicBoolean canceled = new AtomicBoolean(false);
         Thread th = new Thread(() -> {
             try {
-                create(dialog, output, inputFiles, finalFlags, sampleSize, name, author, description);
+                create(dialog, output, inputFiles, flags, sampleSize, name, author, description);
             } catch (InterruptedException e) {
                 LOGGER.log(Level.INFO, "Interrupted by user", e);
                 if (!output.delete()) {

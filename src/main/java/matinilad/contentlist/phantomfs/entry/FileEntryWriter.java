@@ -33,14 +33,15 @@ import java.util.HexFormat;
 import java.util.Objects;
 
 /**
- * TODO: FINISH
+ *
  * @author Cien
  */
 public class FileEntryWriter implements Closeable {
 
     public static class Flags {
+
         private boolean allDisabled = false;
-        
+
         private boolean typeEnabled = true;
         private boolean timestampsEnabled = true;
         private boolean sizeEnabled = true;
@@ -48,15 +49,15 @@ public class FileEntryWriter implements Closeable {
         private boolean sha256Enabled = true;
         private boolean sampleEnabled = true;
         private boolean metadataEnabled = true;
-        
+
         public Flags() {
-            
+
         }
 
         public boolean isAllDisabled() {
             return allDisabled;
         }
-        
+
         public void setAllDisabled(boolean allDisabled) {
             this.allDisabled = allDisabled;
         }
@@ -137,85 +138,59 @@ public class FileEntryWriter implements Closeable {
         public void setMetadataEnabled(boolean metadataEnabled) {
             this.metadataEnabled = metadataEnabled;
         }
-        
+
     }
-    
-    public static final int FLAG_NO_FILES_AND_DIRECTORIES = 0b1;
-    public static final int FLAG_NO_SHA256 = 0b10;
-    public static final int FLAG_NO_SAMPLE = 0b100;
-    public static final int FLAG_NO_METADATA = 0b1000;
-    public static final int FLAG_NO_HEADER = 0b10000;
-    
+
     private final Writer out;
-    private final int flags;
-    private final Flags newFlags;
-    
+    private final Flags flags;
+
     private boolean firstLineWritten = false;
     private boolean headerWritten = false;
-    
-    public FileEntryWriter(Writer out, int flags) {
-        Objects.requireNonNull(out, "out is null");
-        this.out = out;
-        this.flags = flags;
-        this.newFlags = null;
-    }
-    
+
     public FileEntryWriter(Writer out, Flags flags) {
         Objects.requireNonNull(out, "out is null");
         this.out = out;
-        this.flags = 0;
-        this.newFlags = Objects.requireNonNull(flags, "flags is null");
+        this.flags = Objects.requireNonNull(flags, "flags is null");
     }
-    
-    public int getFlags() {
+
+    public Flags getFlags() {
         return flags;
     }
-    
-    private boolean writeFilesAndDirectories() {
-        return (this.flags & FLAG_NO_FILES_AND_DIRECTORIES) == 0;
-    }
-    
-    private boolean writeSha256() {
-        return (this.flags & FLAG_NO_SHA256) == 0;
-    }
-    
-    private boolean writeSample() {
-        return (this.flags & FLAG_NO_SAMPLE) == 0;
-    }
-    
-    private boolean writeMetadata() {
-        return (this.flags & FLAG_NO_METADATA) == 0;
-    }
-    
-    private boolean writeHeaderCheck() {
-        return (this.flags & FLAG_NO_HEADER) == 0;
-    }
-    
+
     public void writeHeader() throws IOException {
-        if (this.headerWritten) {
+        if (this.headerWritten || this.flags.isAllDisabled()) {
             return;
         }
-        
+
         StringBuilder b = new StringBuilder();
-        b.append("path,type,created,modified,size");
-        if (writeFilesAndDirectories()) {
+        b.append("path");
+        if (this.flags.isTypeEnabled()) {
+            b.append(",type");
+        }
+        if (this.flags.isTimestampsEnabled()) {
+            b.append(",created,modified,access");
+        }
+        if (this.flags.isSizeEnabled()) {
+            b.append(",size");
+        }
+        if (this.flags.isFilesAndDirectoriesEnabled()) {
             b.append(",files,directories");
         }
-        if (writeSha256()) {
+        if (this.flags.isSha256Enabled()) {
             b.append(",sha256");
         }
-        if (writeSample()) {
+        if (this.flags.isSampleEnabled()) {
             b.append(",sample");
         }
-        if (writeMetadata()) {
+        if (this.flags.isMetadataEnabled()) {
             b.append(",meta");
         }
         this.out.write(b.toString());
-        
+
         this.headerWritten = true;
         this.firstLineWritten = true;
     }
-    
+
     private String escapeField(String s) {
         StringBuilder b = new StringBuilder();
         boolean quotes = false;
@@ -235,67 +210,78 @@ public class FileEntryWriter implements Closeable {
         }
         return result;
     }
-    
+
     public void writeFileEntry(FileEntry entry) throws IOException {
-        if (writeHeaderCheck()) {
-            writeHeader();
+        writeHeader();
+        
+        if (this.flags.isAllDisabled() && entry.getPath().isRoot()) {
+            return;
         }
+        
         if (this.firstLineWritten) {
             this.out.write(System.lineSeparator());
         }
         this.headerWritten = true;
         this.firstLineWritten = true;
         
-        StringBuilder b = new StringBuilder();
-        
-        b
-                .append(escapeField(entry.getPath().toString())).append(",")
-                .append(escapeField(entry.getType().name())).append(",")
-                .append(escapeField(Long.toString(entry.getCreated()))).append(",")
-                .append(escapeField(Long.toString(entry.getModified()))).append(",")
-                .append(escapeField(Long.toString(entry.getSize())))
-                ;
-        
-        if (writeFilesAndDirectories()) {
-            b.append(",");
+        String text;
+        if (!this.flags.isAllDisabled()) {
+            StringBuilder b = new StringBuilder();
+            HexFormat hex = HexFormat.of();
+            String path = entry.getPath().toString();
             
-            b
-                    .append(escapeField(Integer.toString(entry.getFiles()))).append(",")
-                    .append(escapeField(Integer.toString(entry.getDirectories())))
-                    ;
-        }
-        
-        HexFormat hex = HexFormat.of();
-        
-        if (writeSha256()) {
-            b.append(",");
+            b.append(path);
+            if (this.flags.isTypeEnabled()) {
+                b.append(",").append(escapeField(entry.getType().name()));
+            } else if (entry.getType().equals(FileEntryType.DIRECTORY) && !path.endsWith("/")) {
+                b.append("/");
+            }
             
-            byte[] sha256 = entry.getSha256();
-            if (sha256 != null && sha256.length > 0) {
-                b.append(escapeField(hex.formatHex(sha256)));
+            if (this.flags.isTimestampsEnabled()) {
+                b.append(",").append(escapeField(Long.toString(entry.getCreated())));
+                b.append(",").append(escapeField(Long.toString(entry.getModified())));
+                b.append(",").append(escapeField(Long.toString(entry.getAccess())));
+            }
+            if (this.flags.isSizeEnabled()) {
+                b.append(",").append(escapeField(Long.toString(entry.getSize())));
+            }
+            if (this.flags.isFilesAndDirectoriesEnabled()) {
+                b.append(",").append(escapeField(Integer.toString(entry.getFiles())));
+                b.append(",").append(escapeField(Integer.toString(entry.getDirectories())));
+            }
+            if (this.flags.isSha256Enabled()) {
+                b.append(",");
+
+                byte[] sha256 = entry.getSha256();
+                if (sha256 != null && sha256.length > 0) {
+                    b.append(escapeField(hex.formatHex(sha256)));
+                }
+            }
+            if (this.flags.isSampleEnabled()) {
+                b.append(",");
+
+                byte[] sample = entry.getSample();
+                if (sample != null && sample.length > 0) {
+                    b.append(escapeField(hex.formatHex(sample)));
+                }
+            }
+            if (this.flags.isMetadataEnabled()) {
+                b.append(",");
+                b.append(escapeField(entry.getMetadata().save()));
+            }
+            text = b.toString();
+        } else {
+            text = entry.getPath().toString().substring(1);
+            if (entry.getType().equals(FileEntryType.DIRECTORY)) {
+                text += "/";
             }
         }
-        
-        if (writeSample()) {
-            b.append(",");
-            
-            byte[] sample = entry.getSample();
-            if (sample != null && sample.length > 0) {
-                b.append(escapeField(hex.formatHex(sample)));
-            }
-        }
-        
-        if (writeMetadata()) {
-            b.append(",");
-            b.append(escapeField(entry.getMetadata().save()));
-        }
-        
-        this.out.write(b.toString());
+        this.out.write(text);
     }
-    
+
     @Override
     public void close() throws IOException {
         this.out.close();
     }
-    
+
 }

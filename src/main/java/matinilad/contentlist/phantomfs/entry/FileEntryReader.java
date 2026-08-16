@@ -42,7 +42,7 @@ import matinilad.contentlist.phantomfs.PhantomPath;
  * @author Cien
  */
 public class FileEntryReader implements Closeable {
-    
+
     //todo: add line count
     private final Reader in;
 
@@ -50,141 +50,129 @@ public class FileEntryReader implements Closeable {
     private boolean hasPeek = false;
 
     private boolean endOfFileFound = false;
+
+    private final Map<String, Integer> indices = new HashMap<>();
     private boolean indicesPopulated = false;
-    private int pathIndex;
-    private int typeIndex;
-    private int createdIndex;
-    private int modifiedIndex;
-    private int sizeIndex;
-    private int filesIndex;
-    private int directoriesIndex;
-    private int sha256Index;
-    private int sampleIndex;
-    private int metaIndex;
-    
+
     public FileEntryReader(Reader in) {
         Objects.requireNonNull(in, "in is null");
         this.in = in;
     }
-    
-    private int getHeaderIndex(Map<String, Integer> map, String name) {
-        Integer i = map.get(name);
-        if (i == null) {
-            return -1;
-        }
-        return i;
-    }
 
-    private String getFieldFromRecord(String[] record, int index) {
-        if (index < 0 || index >= record.length) {
+    private String getFieldFromRecord(String[] record, String name) {
+        Integer index = this.indices.get(name);
+        if (index == null) {
+            return null;
+        }
+        int i = index;
+        if (i >= record.length) {
             return null;
         }
         return record[index];
     }
-    
+
     public FileEntry readEntry() throws IOException, IllegalArgumentException, NumberFormatException {
         if (this.endOfFileFound) {
             return null;
         }
 
+        String[] record = null;
+
         if (!this.indicesPopulated) {
-            String[] header = readRecord();
-            if (header == null) {
+            record = readRecord();
+            if (record == null) {
                 this.endOfFileFound = true;
                 return null;
             }
-            Map<String, Integer> headerIndex = new HashMap<>();
-            for (int i = 0; i < header.length; i++) {
-                headerIndex.put(header[i], i);
+            if (!(record.length == 0 || (record.length == 1 && !record[0].equalsIgnoreCase("path")))) {
+                for (int i = 0; i < record.length; i++) {
+                    this.indices.put(record[i].toLowerCase(), i);
+                }
+                record = null;
             }
-            this.pathIndex = getHeaderIndex(headerIndex, "path");
-            this.typeIndex = getHeaderIndex(headerIndex, "type");
-            this.createdIndex = getHeaderIndex(headerIndex, "created");
-            this.modifiedIndex = getHeaderIndex(headerIndex, "modified");
-            this.sizeIndex = getHeaderIndex(headerIndex, "size");
-            this.filesIndex = getHeaderIndex(headerIndex, "files");
-            this.directoriesIndex = getHeaderIndex(headerIndex, "directories");
-            this.sha256Index = getHeaderIndex(headerIndex, "sha256");
-            this.sampleIndex = getHeaderIndex(headerIndex, "sample");
-            this.metaIndex = getHeaderIndex(headerIndex, "meta");
             this.indicesPopulated = true;
-            
-            if (this.pathIndex < 0) {
-                throw new IOException("path column not found.");
-            }
-            if (this.typeIndex < 0) {
-                throw new IOException("type column not found.");
-            }
         }
-        
-        String[] record = readRecord();
+
+        if (record == null) {
+            record = readRecord();
+        }
         
         if (record == null) {
             this.endOfFileFound = true;
             return null;
         }
         
-        String path = getFieldFromRecord(record, this.pathIndex);
-        String type = getFieldFromRecord(record, this.typeIndex);
+        String path = getFieldFromRecord(record, "path");
+        if (path == null && record.length >= 1) {
+            path = record[0];
+        }
+        String type = getFieldFromRecord(record, "type");
+        if (path != null && type == null) {
+            type = (path.endsWith("/") ? FileEntryType.DIRECTORY.name() : FileEntryType.FILE.name());
+        }
+        String created = getFieldFromRecord(record, "created");
+        String modified = getFieldFromRecord(record, "modified");
+        String access = getFieldFromRecord(record, "access");
+        String size = getFieldFromRecord(record, "size");
+        String files = getFieldFromRecord(record, "files");
+        String directories = getFieldFromRecord(record, "directories");
+        String sha256 = getFieldFromRecord(record, "sha256");
+        String sample = getFieldFromRecord(record, "sample");
+        String meta = getFieldFromRecord(record, "meta");
         
         if (path == null || path.isEmpty()) {
             throw new IllegalArgumentException("path not found");
         }
-        
+
         if (type == null || type.isEmpty()) {
             throw new IllegalArgumentException("type not found");
         }
-        
-        FileEntry entry = new FileEntry(PhantomPath.of(path), FileEntryType.valueOf(type));
-        
-        String created = getFieldFromRecord(record, this.createdIndex);
-        String modified = getFieldFromRecord(record, this.modifiedIndex);
-        String size = getFieldFromRecord(record, this.sizeIndex);
+
+        FileEntry entry = new FileEntry(
+                PhantomPath.of(path).toAbsolute().normalize(),
+                FileEntryType.valueOf(type)
+        );
         
         if (created != null && !created.isEmpty()) {
             entry.setCreated(Long.parseLong(created));
         }
-        
+
         if (modified != null && !modified.isEmpty()) {
             entry.setModified(Long.parseLong(modified));
         }
         
+        if (access != null && !access.isEmpty()) {
+            entry.setAccess(Long.parseLong(access));
+        }
+
         if (size != null && !size.isEmpty()) {
             entry.setSize(Long.parseLong(size));
         }
-        
-        String files = getFieldFromRecord(record, this.filesIndex);
-        String directories = getFieldFromRecord(record, this.directoriesIndex);
-        
+
         if (files != null && !files.isEmpty()) {
             entry.setFiles(Integer.parseInt(files));
         }
-        
+
         if (directories != null && !directories.isEmpty()) {
             entry.setDirectories(Integer.parseInt(directories));
         }
         
-        String sha256 = getFieldFromRecord(record, this.sha256Index);
-        String sample = getFieldFromRecord(record, this.sampleIndex);
-        
         if (sha256 != null || sample != null) {
             HexFormat hex = HexFormat.of();
-            
+
             if (sha256 != null && !sha256.isEmpty()) {
                 entry.setSha256(hex.parseHex(sha256));
             }
-            
+
             if (sample != null && !sample.isEmpty()) {
                 entry.setSample(hex.parseHex(sample));
             }
         }
-        
-        String metadata = getFieldFromRecord(record, this.metaIndex);
-        
-        if (metadata != null && !metadata.isEmpty()) {
-            entry.getMetadata().load(metadata);
+
+        if (meta != null && !meta.isEmpty()) {
+            entry.getMetadata().load(meta);
         }
-        
+
         return entry;
     }
 
@@ -274,7 +262,7 @@ public class FileEntryReader implements Closeable {
 
         return fields.toArray(String[]::new);
     }
-    
+
     @Override
     public void close() throws IOException {
         this.in.close();
