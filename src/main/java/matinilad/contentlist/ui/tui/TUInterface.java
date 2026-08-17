@@ -1,6 +1,8 @@
 package matinilad.contentlist.ui.tui;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -13,10 +15,12 @@ import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Scanner;
+import java.util.zip.GZIPInputStream;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.PhantomFileSystem;
 import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.phantomfs.entry.FileEntryReader;
+import matinilad.contentlist.phantomfs.utils.PasswordEncryption;
 import matinilad.contentlist.ui.UIUtils;
 import matinilad.contentlist.ui.tui.commands.AboutCommand;
 import matinilad.contentlist.ui.tui.commands.ChangeDirectoryCommand;
@@ -40,7 +44,8 @@ public class TUInterface {
 
     private static void printHelp(PrintStream out) {
         out.println("Available commands:");
-        out.println("-open [input csv file]");
+        out.println("-open [csv file] - Opens a file");
+        out.println("-decrypt [file] - Opens a encrypted file");
     }
 
     public static void run(InputStream in, PrintStream out, String[] args) {
@@ -51,9 +56,9 @@ public class TUInterface {
             printHelp(out);
             return;
         }
-        switch (args[0]) {
-            case "-open" -> {
-                open(in, out, Arrays.copyOfRange(args, 1, args.length));
+        switch (args[0].toLowerCase()) {
+            case "-open", "-decrypt" -> {
+                open(in, out, Arrays.copyOfRange(args, 1, args.length), args[0].equalsIgnoreCase("-decrypt"));
             }
             default -> {
                 if (!args[0].equals("-help")) {
@@ -64,7 +69,7 @@ public class TUInterface {
         }
     }
 
-    private static void open(InputStream in, PrintStream out, String[] args) {
+    private static void open(InputStream in, PrintStream out, String[] args, boolean decrypt) {
         if (args.length == 0) {
             out.println("No arguments!");
             out.println("Usage:");
@@ -91,18 +96,53 @@ public class TUInterface {
             out.println("Input file is not a file!");
             return;
         }
-
+        
+        Scanner scanner = new Scanner(in);
+        if (!decrypt && inputPath.getFileName().toString().toLowerCase().endsWith(".bin")) {
+            out.println("Is "+inputPath.toString()+" encrypted?");
+            out.print("[Y/N:]");
+            String r = scanner.nextLine();
+            if (r.equalsIgnoreCase("y") || r.equalsIgnoreCase("yes")) {
+                decrypt = true;
+            }
+        }
+        
         out.println("Loading...");
 
         PhantomFileSystem fs = new PhantomFileSystem();
         try {
-            try (FileEntryReader reader = new FileEntryReader(new BufferedReader(new InputStreamReader(Files.newInputStream(inputPath), StandardCharsets.UTF_8)))) {
+            InputStream input;
+            if (decrypt) {
+                Console console = System.console();
+                if (console == null) {
+                    out.println("Console is not available for password reading");
+                    return;
+                }
+                byte[] data = Files.readAllBytes(inputPath);
+                while (true) {
+                    char[] password = console.readPassword("[%s]", "Password:");
+                    if (password == null || password.length == 0) {
+                        out.println("Password is empty, try again");
+                        continue;
+                    }
+                    try {
+                        input = new GZIPInputStream(new ByteArrayInputStream(PasswordEncryption.decrypt(data, password)));
+                        break;
+                    } catch (PasswordEncryption.IncorrectPasswordException ex) {
+                        out.println("Incorrect password or corrupted file, try again");
+                    }
+                }
+            } else {
+                input = Files.newInputStream(inputPath);
+            }
+            
+            try (FileEntryReader reader = new FileEntryReader(new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8)))) {
                 FileEntry entry;
                 while ((entry = reader.readEntry()) != null) {
                     fs.writeEntry(entry);
                 }
             }
-        } catch (IOException ex) {
+        } catch (IOException | IllegalArgumentException ex) {
             out.println("Failed to load input file!");
             out.println(ex.getLocalizedMessage());
             ex.printStackTrace(out);
@@ -110,8 +150,8 @@ public class TUInterface {
         }
 
         out.println("Done!");
-
-        runTerminal(in, out, fs);
+        
+        runTerminal(scanner, in, out, fs);
     }
 
     private static FileEntry readEntry(PrintStream out, PhantomFileSystem fs, PhantomPath path) {
@@ -123,9 +163,7 @@ public class TUInterface {
         return entry;
     }
 
-    private static void runTerminal(InputStream in, PrintStream out, PhantomFileSystem fs) {
-        Scanner scanner = new Scanner(in);
-
+    private static void runTerminal(Scanner scanner, InputStream in, PrintStream out, PhantomFileSystem fs) {
         out.println(UIUtils.name() + " Terminal v" + UIUtils.version());
         FileEntry rootEntry = readEntry(out, fs, PhantomPath.of("/"));
         if (rootEntry != null) {

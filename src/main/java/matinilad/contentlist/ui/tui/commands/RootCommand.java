@@ -26,6 +26,7 @@
  */
 package matinilad.contentlist.ui.tui.commands;
 
+import java.io.IOException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import matinilad.contentlist.ui.tui.Command;
@@ -66,6 +67,11 @@ public class RootCommand extends Command {
             path = Path.of(input);
         } catch (InvalidPathException ex) {
             throw new CommandException("Invalid path: "+input, ex);
+        }
+        try {
+            path = path.toRealPath();
+        } catch (IOException ex) {
+            throw new CommandException("Invalid directory: "+input, ex);
         }
         
         TUIState state = getState();

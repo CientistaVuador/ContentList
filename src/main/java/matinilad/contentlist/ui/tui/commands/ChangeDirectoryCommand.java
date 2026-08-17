@@ -57,8 +57,8 @@ public class ChangeDirectoryCommand extends Command {
         PhantomFileSystem fs = getFileSystem();
         TUIState state = getState();
         
-        if (input == null) {
-            throw new CommandException("Usage: cd [directory]");
+        if (input == null || input.isEmpty()) {
+            return state.getWorkingDirectory().toString();
         }
         
         PhantomPath newWorkingDirectory = state.parsePath(input);

@@ -78,6 +78,7 @@ public class AboutCommand extends Command {
         b.append(" Type: ").append(entry.getType()).append(System.lineSeparator());
         b.append(" Created: ").append(UIUtils.asShortLocalizedDateTime(entry.getCreated())).append(System.lineSeparator());
         b.append(" Modified: ").append(UIUtils.asShortLocalizedDateTime(entry.getModified())).append(System.lineSeparator());
+        b.append(" Accessed: ").append(UIUtils.asShortLocalizedDateTime(entry.getAccess())).append(System.lineSeparator());
         b.append(" Size: ").append(UIUtils.formatBytes(entry.getSize())).append(System.lineSeparator());
         if (entry.getType().equals(FileEntryType.DIRECTORY)) {
             b.append("  ").append(entry.getFiles()).append(" Files, ").append(entry.getDirectories()).append(" Directories").append(System.lineSeparator());
