@@ -137,11 +137,8 @@ public class FileEntry {
     @Override
     public String toString() {
         try {
-            FileEntryWriter.Flags flags = new FileEntryWriter.Flags();
-            flags.setAllDisabled(true);
-            
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8), flags)) {
+            try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8), new FileEntryWriter.Flags(), false)) {
                 writer.writeFileEntry(this);
             }
             return out.toString(StandardCharsets.UTF_8);

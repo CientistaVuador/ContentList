@@ -26,7 +26,6 @@
  */
 package matinilad.contentlist.ui.cli;
 
-import java.io.ByteArrayOutputStream;
 import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,7 +49,7 @@ import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.entry.FileEntryFactory;
 import matinilad.contentlist.phantomfs.entry.FileEntryMetadata;
 import matinilad.contentlist.phantomfs.entry.FileEntryWriter;
-import matinilad.contentlist.phantomfs.utils.PasswordEncryption;
+import matinilad.contentlist.phantomfs.utils.EncryptedOutputStream;
 import matinilad.contentlist.phantomfs.utils.PathStream;
 import matinilad.contentlist.phantomfs.utils.TempFileList;
 import matinilad.contentlist.ui.UIUtils;
@@ -74,7 +73,7 @@ public class CreateCommand {
         out.println("-replace - Replaces the output file without asking, if it already exists");
         out.println("-hidden - Includes hidden files");
         out.println("-sampleSize [size] - Sets the sample size for files");
-        out.println("-disable [type/timestamps/size/filesAndDirectories/sha256/sample/metadata/all]");
+        out.println("-disable [type/timestamps/size/filesAndDirectories/sha256/sample/metadata]");
         out.println("  Blocks a file attribute from being written into the csv");
         out.println("  A comma can be used for multiple attributes in a single argument");
         out.println("  e.g.: -disable sha256,sample");
@@ -237,9 +236,6 @@ public class CreateCommand {
                             case "metadata" -> {
                                 flags.setMetadataEnabled(false);
                             }
-                            case "all" -> {
-                                flags.setAllDisabled(true);
-                            }
                             default -> {
                                 out.println("Unknown disable option: " + s);
                                 return -1;
@@ -387,6 +383,19 @@ public class CreateCommand {
                         meta.writeString(FileEntry.METADATA_DESCRIPTION, description);
                     }
 
+                    OutputStream toOutput = fileOut;
+                    if (password != null) {
+                        toOutput = new GZIPOutputStream(new EncryptedOutputStream(fileOut, userSalt, password));
+                        Arrays.fill(password, '\0');
+                    }
+                    
+                    try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(toOutput, StandardCharsets.UTF_8), flags)) {
+                        FileEntry[] entries = fs.listEntries();
+                        for (FileEntry e : entries) {
+                            writer.writeFileEntry(e);
+                        }
+                    }
+                    
                     if (verbose) {
                         out.println("Total size: " + UIUtils.formatBytes(rootEntry.getSize()));
                         out.println("Files: " + rootEntry.getFiles());
@@ -398,26 +407,6 @@ public class CreateCommand {
                         }
                     }
                     
-                    ByteArrayOutputStream arrayOut = new ByteArrayOutputStream();
-
-                    OutputStream toOutput = fileOut;
-                    if (password != null) {
-                        toOutput = new GZIPOutputStream(arrayOut);
-                    }
-
-                    try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(toOutput, StandardCharsets.UTF_8), flags)) {
-                        FileEntry[] entries = fs.listEntries();
-                        for (FileEntry e : entries) {
-                            writer.writeFileEntry(e);
-                        }
-                    }
-
-                    if (password != null) {
-                        toOutput.close();
-
-                        fileOut.write(PasswordEncryption.encrypt(arrayOut.toByteArray(), userSalt, password));
-                    }
-
                     return errorCount.get();
                 } finally {
                     if (password != null) {

@@ -60,7 +60,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 public class StatusDialog extends javax.swing.JDialog {
 
     private static final Logger LOGGER = Logger.getLogger(StatusDialog.class.getName());
-    
+
     private static class LoggerLevelJCheckBoxMenuItem extends JCheckBoxMenuItem {
 
         private final Level level;
@@ -74,9 +74,9 @@ public class StatusDialog extends javax.swing.JDialog {
             return level;
         }
     }
-    
+
     private final List<LoggerLevelJCheckBoxMenuItem> loggerLevelButtons = new ArrayList<>();
-    
+
     private final Handler loggerHandler = new Handler() {
         private int warnings = 0;
         private int errors = 0;
@@ -95,7 +95,7 @@ public class StatusDialog extends javax.swing.JDialog {
                 }
             });
         }
-        
+
         @Override
         public void publish(LogRecord record) {
             if (!isLoggable(record)) {
@@ -123,7 +123,7 @@ public class StatusDialog extends javax.swing.JDialog {
             final boolean finalUpdatedCount = updatedCount;
             SwingUtilities.invokeLater(() -> {
                 logTextArea.append(msg);
-                
+
                 if (finalUpdatedCount) {
                     StringBuilder b = new StringBuilder();
                     b.append(this.warnings);
@@ -138,7 +138,7 @@ public class StatusDialog extends javax.swing.JDialog {
                     } else {
                         b.append(" Errors");
                     }
-                    
+
                     logCount.setText(b.toString());
                 }
             });
@@ -154,7 +154,7 @@ public class StatusDialog extends javax.swing.JDialog {
 
         }
     };
-    
+
     private float progress = 0f;
     private Future<?> globalStatusUpdate = null;
 
@@ -198,7 +198,7 @@ public class StatusDialog extends javax.swing.JDialog {
         jSeparator1 = new javax.swing.JPopupMenu.Separator();
         clearLogButton = new javax.swing.JMenuItem();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
         setTitle("Title");
         setMinimumSize(new java.awt.Dimension(400, 300));
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -372,8 +372,24 @@ public class StatusDialog extends javax.swing.JDialog {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
+    public boolean showCancelDialog() {
+        int r = JOptionPane.showConfirmDialog(
+                this,
+                "Are you sure you want to cancel?",
+                "Confirm action",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
+        return r == JOptionPane.YES_OPTION;
+    }
+
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
-        getCancelButton().doClick();
+        if (getCancelButton().isEnabled()) {
+            getCancelButton().doClick();
+            return;
+        }
+        setVisible(false);
+        dispose();
     }//GEN-LAST:event_formWindowClosing
 
     private void clearLogButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearLogButtonActionPerformed
@@ -433,7 +449,7 @@ public class StatusDialog extends javax.swing.JDialog {
     public JTextField getCurrentItemName() {
         return currentItemName;
     }
-    
+
     public void setProgress(float progress) {
         if (!Float.isFinite(progress)) {
             this.progressBar.setIndeterminate(true);
@@ -441,14 +457,14 @@ public class StatusDialog extends javax.swing.JDialog {
             this.progress = progress;
             return;
         }
-        
+
         if (this.progressBar.isIndeterminate()) {
             this.progressBar.setIndeterminate(false);
         }
-        
+
         final int min = this.progressBar.getMinimum();
         final int max = this.progressBar.getMaximum();
-        
+
         int progressInteger;
         if (progress >= 1f) {
             progressInteger = max;
@@ -458,17 +474,17 @@ public class StatusDialog extends javax.swing.JDialog {
             progressInteger = (int) (progress * (max - min));
             progressInteger = Math.min(Math.max(progressInteger + min, min), max);
         }
-        
+
         this.progressBar.setValue(progressInteger);
-        this.progressLabel.setText(String.format("%.2f", Math.min(Math.max(progress * 100f, 0f), 100f))+"%");
-        
+        this.progressLabel.setText(String.format("%.2f", Math.min(Math.max(progress * 100f, 0f), 100f)) + "%");
+
         this.progress = progress;
     }
 
     public float getProgress() {
         return progress;
     }
-    
+
     public JLabel getEstimatedTime() {
         return estimatedTime;
     }
@@ -485,21 +501,22 @@ public class StatusDialog extends javax.swing.JDialog {
         Runnable task = () -> {
             getCurrentGlobalStatus().setText(text);
         };
-        
+
         if (force) {
             SwingUtilities.invokeLater(task);
             return;
         }
-        
+
         if (this.globalStatusUpdate == null || this.globalStatusUpdate.isDone()) {
             this.globalStatusUpdate = CompletableFuture.runAsync(() -> {
                 try {
                     SwingUtilities.invokeAndWait(task);
-                } catch (InterruptedException | InvocationTargetException ex) {}
+                } catch (InterruptedException | InvocationTargetException ex) {
+                }
             });
         }
     }
-    
+
     public JButton getCancelButton() {
         return cancelButton;
     }

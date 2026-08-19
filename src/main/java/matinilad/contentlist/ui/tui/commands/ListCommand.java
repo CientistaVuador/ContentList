@@ -67,7 +67,7 @@ public class ListCommand extends Command {
             if (!file.getName().equals(".")
                     && !file.getName().equals("..")
                     && fs.isDirectory(file)) {
-                b.append("/.");
+                b.append("/");
             }
             
             if (i != (files.length - 1)) {

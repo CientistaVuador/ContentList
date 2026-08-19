@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.io.PushbackInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -43,7 +44,7 @@ import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.entry.FileEntryReader;
 import matinilad.contentlist.phantomfs.entry.FileEntryValidator;
 import matinilad.contentlist.phantomfs.entry.FileEntryValidatorResult;
-import matinilad.contentlist.phantomfs.utils.PasswordEncryption;
+import matinilad.contentlist.phantomfs.utils.EncryptedInputStream;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
@@ -150,16 +151,19 @@ public class ValidateCommand {
             }
         }
 
-        InputStream input;
+        InputStream input = Files.newInputStream(inputFile);
         if (decrypt) {
-            byte[] data = Files.readAllBytes(inputFile);
-
             Console console = System.console();
             if (console == null) {
                 out.println("Console is not available for password reading");
                 return -1;
             }
-
+            
+            PushbackInputStream pushback = new PushbackInputStream(input, 512);
+            byte[] sample = pushback.readNBytes(512);
+            pushback.unread(sample);
+            input = pushback;
+            
             while (true) {
                 char[] password = console.readPassword("[%s]", "Password:");
                 try {
@@ -167,21 +171,25 @@ public class ValidateCommand {
                         out.println("Password is empty");
                         continue;
                     }
+
                     try {
-                        input = new GZIPInputStream(new ByteArrayInputStream(PasswordEncryption.decrypt(data, password)));
-                        break;
-                    } catch (PasswordEncryption.IncorrectPasswordException ex) {
+                        EncryptedInputStream test = new EncryptedInputStream(new ByteArrayInputStream(sample), password);
+                        test.readAllBytes();
+                    } catch (EncryptedInputStream.IncorrectPasswordException ex) {
                         out.println("Incorrect password or corrupted file, try again");
                         continue;
+                    } catch (IOException t) {
+                        //ignore
                     }
+                    
+                    input = new GZIPInputStream(new EncryptedInputStream(input, password));
+                    break;
                 } finally {
                     if (password != null) {
                         Arrays.fill(password, '\0');
                     }
                 }
             }
-        } else {
-            input = Files.newInputStream(inputFile);
         }
 
         int errors = 0;
@@ -210,11 +218,11 @@ public class ValidateCommand {
                 }
             }
         }
-        
+
         if (verbose || errors != 0) {
-            out.println("Errors: "+errors);
+            out.println("Errors: " + errors);
         }
-        
+
         return errors;
     }
 

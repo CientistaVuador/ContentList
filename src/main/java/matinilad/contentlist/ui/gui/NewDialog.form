@@ -170,7 +170,7 @@
                           <EmptySpace max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="0" attributes="0">
                               <Group type="102" attributes="0">
-                                  <Component id="jScrollPane2" pref="275" max="32767" attributes="0"/>
+                                  <Component id="jScrollPane2" pref="278" max="32767" attributes="0"/>
                                   <EmptySpace max="-2" attributes="0"/>
                                   <Group type="103" groupAlignment="0" max="-2" attributes="0">
                                       <Component id="inputListRemoveButton" max="32767" attributes="0"/>
@@ -194,7 +194,7 @@
                                   <Component id="inputListAddButton" min="-2" max="-2" attributes="0"/>
                                   <EmptySpace max="-2" attributes="0"/>
                                   <Component id="inputListRemoveButton" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace pref="59" max="32767" attributes="0"/>
+                                  <EmptySpace pref="64" max="32767" attributes="0"/>
                                   <Component id="inputFilesClearButton" min="-2" max="-2" attributes="0"/>
                               </Group>
                           </Group>
@@ -262,90 +262,6 @@
             </Container>
           </SubComponents>
         </Container>
-        <Container class="javax.swing.JPanel" name="jPanel2">
-          <Constraints>
-            <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout" value="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout$JTabbedPaneConstraintsDescription">
-              <JTabbedPaneConstraints tabName="Settings">
-                <Property name="tabTitle" type="java.lang.String" value="Settings"/>
-              </JTabbedPaneConstraints>
-            </Constraint>
-          </Constraints>
-
-          <Layout>
-            <DimensionLayout dim="0">
-              <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" attributes="0">
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                          <Component id="noFilesAndDirectoriesButton" max="32767" attributes="0"/>
-                          <Component id="noSha256Button" max="32767" attributes="0"/>
-                          <Component id="noFileSampleButton" max="32767" attributes="0"/>
-                          <Component id="noMetadataButton" max="32767" attributes="0"/>
-                          <Component id="fileSampleSizeSpinner" alignment="0" min="-2" max="-2" attributes="0"/>
-                          <Component id="fileSampleSizeLabel" alignment="0" max="32767" attributes="0"/>
-                      </Group>
-                      <EmptySpace pref="155" max="32767" attributes="0"/>
-                  </Group>
-              </Group>
-            </DimensionLayout>
-            <DimensionLayout dim="1">
-              <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" alignment="0" attributes="0">
-                      <EmptySpace min="-2" pref="12" max="-2" attributes="0"/>
-                      <Component id="noFilesAndDirectoriesButton" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="noSha256Button" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="noFileSampleButton" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="noMetadataButton" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="fileSampleSizeLabel" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="fileSampleSizeSpinner" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace pref="122" max="32767" attributes="0"/>
-                  </Group>
-              </Group>
-            </DimensionLayout>
-          </Layout>
-          <SubComponents>
-            <Component class="javax.swing.JCheckBox" name="noFilesAndDirectoriesButton">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Don&apos;t Write Files and Directories Count"/>
-              </Properties>
-            </Component>
-            <Component class="javax.swing.JCheckBox" name="noSha256Button">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Don&apos;t Write SHA256"/>
-              </Properties>
-            </Component>
-            <Component class="javax.swing.JCheckBox" name="noFileSampleButton">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Don&apos;t Write a File Sample"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="noFileSampleButtonActionPerformed"/>
-              </Events>
-            </Component>
-            <Component class="javax.swing.JCheckBox" name="noMetadataButton">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Don&apos;t Write Metadata"/>
-              </Properties>
-            </Component>
-            <Component class="javax.swing.JSpinner" name="fileSampleSizeSpinner">
-              <Properties>
-                <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
-                  <SpinnerModel initial="32" maximum="64" minimum="0" numberType="java.lang.Integer" stepSize="1" type="number"/>
-                </Property>
-              </Properties>
-            </Component>
-            <Component class="javax.swing.JLabel" name="fileSampleSizeLabel">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="File Sample Size:"/>
-              </Properties>
-            </Component>
-          </SubComponents>
-        </Container>
         <Container class="javax.swing.JPanel" name="jPanel5">
           <Constraints>
             <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout" value="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout$JTabbedPaneConstraintsDescription">
@@ -361,7 +277,7 @@
                   <Group type="102" alignment="1" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="1" attributes="0">
-                          <Component id="jScrollPane3" pref="376" max="32767" attributes="0"/>
+                          <Component id="jScrollPane3" pref="379" max="32767" attributes="0"/>
                           <Component id="metadataNameField" alignment="0" max="32767" attributes="0"/>
                           <Group type="102" alignment="0" attributes="0">
                               <Group type="103" groupAlignment="1" attributes="0">
@@ -398,7 +314,7 @@
                       <EmptySpace min="-2" pref="11" max="-2" attributes="0"/>
                       <Component id="jLabel4" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
-                      <Component id="jScrollPane3" pref="136" max="32767" attributes="0"/>
+                      <Component id="jScrollPane3" pref="141" max="32767" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                   </Group>
               </Group>
@@ -445,6 +361,247 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setUsernameToAuthorButtonActionPerformed"/>
+              </Events>
+            </Component>
+          </SubComponents>
+        </Container>
+        <Container class="javax.swing.JPanel" name="jPanel2">
+          <Constraints>
+            <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout" value="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout$JTabbedPaneConstraintsDescription">
+              <JTabbedPaneConstraints tabName="Settings">
+                <Property name="tabTitle" type="java.lang.String" value="Settings"/>
+              </JTabbedPaneConstraints>
+            </Constraint>
+          </Constraints>
+
+          <Layout>
+            <DimensionLayout dim="0">
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" attributes="0">
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" attributes="0">
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="noSha256Button" alignment="0" min="-2" pref="146" max="-2" attributes="0"/>
+                                  <Component id="noTimestampsButton" alignment="0" min="-2" max="-2" attributes="0"/>
+                                  <Component id="noMetadataButton" alignment="0" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace max="32767" attributes="0"/>
+                          </Group>
+                          <Group type="102" attributes="0">
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="noFileTypeButton" alignment="0" min="-2" max="-2" attributes="0"/>
+                                  <Component id="noFileSampleButton" min="-2" pref="192" max="-2" attributes="0"/>
+                                  <Component id="noFileSizeButton" alignment="0" min="-2" max="-2" attributes="0"/>
+                                  <Component id="noFilesAndDirectoriesButton" alignment="0" min="-2" max="-2" attributes="0"/>
+                                  <Component id="fileSampleSizeSpinner" alignment="0" min="-2" max="-2" attributes="0"/>
+                                  <Component id="fileSampleSizeLabel" alignment="0" min="-2" max="-2" attributes="0"/>
+                                  <Component id="includeHiddenFilesCheckbox" alignment="0" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace min="0" pref="165" max="32767" attributes="0"/>
+                          </Group>
+                      </Group>
+                  </Group>
+              </Group>
+            </DimensionLayout>
+            <DimensionLayout dim="1">
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" alignment="0" attributes="0">
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="noFileTypeButton" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="noTimestampsButton" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="noFileSizeButton" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="6" max="-2" attributes="0"/>
+                      <Component id="noFilesAndDirectoriesButton" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="noSha256Button" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="6" max="-2" attributes="0"/>
+                      <Component id="noFileSampleButton" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="noMetadataButton" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="fileSampleSizeLabel" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="6" max="-2" attributes="0"/>
+                      <Component id="fileSampleSizeSpinner" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="includeHiddenFilesCheckbox" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace pref="29" max="32767" attributes="0"/>
+                  </Group>
+              </Group>
+            </DimensionLayout>
+          </Layout>
+          <SubComponents>
+            <Component class="javax.swing.JCheckBox" name="noFilesAndDirectoriesButton">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Don&apos;t write files and directories count"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="noSha256Button">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Don&apos;t write file SHA256"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="noFileSampleButton">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Don&apos;t write file sample"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="noFileSampleButtonActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="noMetadataButton">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Don&apos;t write metadata"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JSpinner" name="fileSampleSizeSpinner">
+              <Properties>
+                <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
+                  <SpinnerModel initial="32" maximum="64" minimum="0" numberType="java.lang.Integer" stepSize="1" type="number"/>
+                </Property>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="fileSampleSizeLabel">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="File sample size (in bytes):"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="noFileTypeButton">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Don&apos;t write file type"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="noTimestampsButton">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Don&apos;t write timestamps"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="noFileSizeButton">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Don&apos;t write file size"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="includeHiddenFilesCheckbox">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Include hidden files"/>
+              </Properties>
+            </Component>
+          </SubComponents>
+        </Container>
+        <Container class="javax.swing.JPanel" name="jPanel6">
+          <Constraints>
+            <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout" value="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout$JTabbedPaneConstraintsDescription">
+              <JTabbedPaneConstraints tabName="Encrypt">
+                <Property name="tabTitle" type="java.lang.String" value="Encrypt"/>
+              </JTabbedPaneConstraints>
+            </Constraint>
+          </Constraints>
+
+          <Layout>
+            <DimensionLayout dim="0">
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" alignment="0" attributes="0">
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="confirmPasswordField" max="32767" attributes="0"/>
+                          <Component id="jScrollPane1" alignment="0" max="32767" attributes="0"/>
+                          <Group type="102" attributes="0">
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="encryptWithAPasswordCheckbox" min="-2" max="-2" attributes="0"/>
+                                  <Component id="saltLabel" alignment="0" min="-2" max="-2" attributes="0"/>
+                                  <Component id="confirmPasswordLabel" alignment="0" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace min="0" pref="67" max="32767" attributes="0"/>
+                          </Group>
+                          <Group type="102" alignment="0" attributes="0">
+                              <Component id="passwordField" max="32767" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="showPasswordCheckbox" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                      </Group>
+                      <EmptySpace max="-2" attributes="0"/>
+                  </Group>
+              </Group>
+            </DimensionLayout>
+            <DimensionLayout dim="1">
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" alignment="0" attributes="0">
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="encryptWithAPasswordCheckbox" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="passwordField" min="-2" max="-2" attributes="0"/>
+                          <Component id="showPasswordCheckbox" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="confirmPasswordLabel" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="confirmPasswordField" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="saltLabel" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="jScrollPane1" pref="149" max="32767" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                  </Group>
+              </Group>
+            </DimensionLayout>
+          </Layout>
+          <SubComponents>
+            <Component class="javax.swing.JCheckBox" name="encryptWithAPasswordCheckbox">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Encrypt with a password:"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="encryptWithAPasswordCheckboxActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JPasswordField" name="passwordField">
+              <Properties>
+                <Property name="enabled" type="boolean" value="false"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="saltLabel">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Salt (type random characters below or leave empty to skip):"/>
+                <Property name="enabled" type="boolean" value="false"/>
+              </Properties>
+            </Component>
+            <Container class="javax.swing.JScrollPane" name="jScrollPane1">
+              <AuxValues>
+                <AuxValue name="autoScrollPane" type="java.lang.Boolean" value="true"/>
+              </AuxValues>
+
+              <Layout class="org.netbeans.modules.form.compat2.layouts.support.JScrollPaneSupportLayout"/>
+              <SubComponents>
+                <Component class="javax.swing.JTextArea" name="saltArea">
+                  <Properties>
+                    <Property name="columns" type="int" value="20"/>
+                    <Property name="rows" type="int" value="5"/>
+                    <Property name="enabled" type="boolean" value="false"/>
+                  </Properties>
+                </Component>
+              </SubComponents>
+            </Container>
+            <Component class="javax.swing.JPasswordField" name="confirmPasswordField">
+              <Properties>
+                <Property name="enabled" type="boolean" value="false"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="confirmPasswordLabel">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Confirm password:"/>
+                <Property name="enabled" type="boolean" value="false"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="showPasswordCheckbox">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Show"/>
+                <Property name="enabled" type="boolean" value="false"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="showPasswordCheckboxActionPerformed"/>
               </Events>
             </Component>
           </SubComponents>

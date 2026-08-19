@@ -108,7 +108,7 @@ public class FileEntryReader implements Closeable {
         }
         String type = getFieldFromRecord(record, "type");
         if (path != null && type == null) {
-            type = (path.endsWith("/") ? FileEntryType.DIRECTORY.name() : FileEntryType.FILE.name());
+            type = ((path.endsWith("/") || path.endsWith("\\")) ? FileEntryType.DIRECTORY.name() : FileEntryType.FILE.name());
         }
         String created = getFieldFromRecord(record, "created");
         String modified = getFieldFromRecord(record, "modified");

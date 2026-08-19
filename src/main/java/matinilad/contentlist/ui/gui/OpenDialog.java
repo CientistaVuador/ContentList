@@ -29,23 +29,29 @@ package matinilad.contentlist.ui.gui;
 import java.awt.Dialog;
 import java.awt.Frame;
 import java.awt.Toolkit;
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PushbackInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.zip.GZIPInputStream;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import matinilad.contentlist.phantomfs.PhantomFileSystem;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.entry.FileEntryReader;
+import matinilad.contentlist.phantomfs.utils.EncryptedInputStream;
 
 /**
  *
@@ -74,7 +80,6 @@ public class OpenDialog extends StatusDialog {
                 this.thread.interrupt();
                 this.thread = null;
             }
-            setVisible(false);
         });
     }
 
@@ -86,12 +91,12 @@ public class OpenDialog extends StatusDialog {
         return this.thread != null;
     }
 
-    public void open(Path path) {
-        openObject(path);
+    public void open(Path path, boolean decrypt) {
+        openObject(path, decrypt);
     }
 
-    public void open(File file) {
-        openObject(file);
+    public void open(File file, boolean decrypt) {
+        openObject(file, decrypt);
     }
 
     private String getFilePath(Object obj) {
@@ -133,7 +138,7 @@ public class OpenDialog extends StatusDialog {
         throw new IllegalArgumentException("Unsupported file type: " + obj.getClass().getName());
     }
 
-    private void openObject(Object obj) {
+    private void openObject(Object obj, boolean decrypt) {
         if (this.thread != null) {
             return;
         }
@@ -141,69 +146,118 @@ public class OpenDialog extends StatusDialog {
         LOGGER.addHandler(getLoggerHandler());
 
         String filePath = getFilePath(obj);
+        if (!decrypt && filePath.toLowerCase().endsWith(".bin")) {
+            int r = JOptionPane.showConfirmDialog(
+                    this,
+                    "Is\n" + filePath + "\nEncrypted?",
+                    "Confirm",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+            );
+            if (r == JOptionPane.YES_OPTION) {
+                decrypt = true;
+            }
+        }
         LOGGER.log(Level.INFO, "Now reading: {0}", filePath);
-        
+
         setTitle(filePath);
         getCurrentItemName().setText("");
         setProgress(0f);
         getCurrentItemStatus().setText("");
         getEstimatedTime().setText("");
         getCurrentGlobalStatus().setText("");
-        
+
         getCancelButton().setEnabled(true);
-        
+
         StatusDialogFileItem fileItem = new StatusDialogFileItem(this);
+        boolean finalDecrypt = decrypt;
 
         this.thread = new Thread(() -> {
             try {
                 try {
+                    InputStream in = getFileStream(obj);
+                    CountingInputStream counting = new CountingInputStream(in) {
+                        @Override
+                        protected void updateCount(long toAdd) {
+                            super.updateCount(toAdd);
+
+                            fileItem.setFileProgress(fileItem.getFileProgress() + toAdd);
+                            fileItem.updateDialog(false);
+                        }
+                    };
+                    in = counting;
+                    
+                    if (finalDecrypt) {
+                        PushbackInputStream pushBack = new PushbackInputStream(in, 512);
+                        byte[] sample = pushBack.readNBytes(512);
+                        pushBack.unread(sample);
+                        in = pushBack;
+
+                        while (true) {
+                            AtomicReference<char[]> atomicPassword = new AtomicReference<>(null);
+                            SwingUtilities.invokeAndWait(() -> {
+                                PasswordDialog d = new PasswordDialog(this, true);
+                                try {
+                                    d.setVisible(true);
+                                    atomicPassword.set(d.getPassword());
+                                } finally {
+                                    d.clearPassword();
+                                }
+                            });
+                            char[] password = atomicPassword.get();
+                            if (password == null) {
+                                throw new InterruptedException();
+                            }
+                            try {
+                                EncryptedInputStream en = new EncryptedInputStream(new ByteArrayInputStream(sample), password);
+                                en.readAllBytes();
+                            } catch (EncryptedInputStream.IncorrectPasswordException ex) {
+                                SwingUtilities.invokeAndWait(() -> {
+                                    Toolkit.getDefaultToolkit().beep();
+                                    JOptionPane.showMessageDialog(this, "Password is wrong or file is corrupted! Try again", "Wrong password!", JOptionPane.ERROR_MESSAGE);
+                                });
+                                continue;
+                            } catch (IOException t) {
+                                //ignore
+                            }
+
+                            in = new GZIPInputStream(new EncryptedInputStream(in, password));
+                            break;
+                        }
+                    }
+
                     fileItem.reset();
                     fileItem.setFileSize(getFileSize(obj));
                     
                     PhantomFileSystem fs = new PhantomFileSystem();
-                    try (InputStream fileStream = getFileStream(obj)) {
-                        try (CountingInputStream countingStream = new CountingInputStream(fileStream) {
-                            @Override
-                            protected void updateCount(long toAdd) {
-                                super.updateCount(toAdd);
-                                
-                                fileItem.setFileProgress(fileItem.getFileProgress() + toAdd);
-                                fileItem.updateDialog(false);
-                            }
-                        }) {
-                            try (InputStreamReader reader = new InputStreamReader(countingStream, StandardCharsets.UTF_8)) {
-                                try (BufferedReader bufferedReader = new BufferedReader(reader)) {
-                                    try (FileEntryReader entryReader = new FileEntryReader(bufferedReader)) {
-                                        int entryCount = 0;
-                                        
-                                        FileEntry entry;
-                                        while ((entry = entryReader.readEntry()) != null) {
-                                            if (Thread.interrupted()) {
-                                                throw new InterruptedException();
-                                            }
+                    try (FileEntryReader entryReader = new FileEntryReader(new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)))) {
+                        int entryCount = 0;
 
-                                            fs.writeEntry(entry);
-                                            entryCount++;
-                                            
-                                            fileItem.setFileName(entry.getPath().toString());
-                                            
-                                            updateCurrentGlobalStatusAsync(entryCount + (entryCount == 1 ? " Entry " : " Entries"), false);
-                                            fileItem.updateDialog(false);
-                                        }
-                                    }
-                                }
+                        FileEntry entry;
+                        while ((entry = entryReader.readEntry()) != null) {
+                            if (Thread.interrupted()) {
+                                throw new InterruptedException();
                             }
+
+                            fs.writeEntry(entry);
+                            entryCount++;
+
+                            fileItem.setFileName(entry.getPath().toString());
+
+                            updateCurrentGlobalStatusAsync(entryCount + (entryCount == 1 ? " Entry " : " Entries"), false);
+                            fileItem.updateDialog(false);
                         }
                     }
-
-                    fs.validate();
                     
+                    fs.validate();
+
                     fileItem.setFileName("Done.");
                     fileItem.setFileProgress(fileItem.getFileSize());
                     fileItem.updateDialog(true);
 
                     SwingUtilities.invokeLater(() -> {
                         setVisible(false);
+                        dispose();
                         if (this.thread != null) {
                             onFileSystemReady(fs);
                         }
@@ -221,6 +275,10 @@ public class OpenDialog extends StatusDialog {
                             );
                         });
                     } else {
+                        SwingUtilities.invokeLater(() -> {
+                            setVisible(false);
+                            dispose();
+                        });
                         LOGGER.info("Canceled");
                     }
                 }

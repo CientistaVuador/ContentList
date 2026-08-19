@@ -30,9 +30,10 @@ import java.awt.Toolkit;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -41,23 +42,32 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPOutputStream;
 import javax.swing.DefaultListModel;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.JPasswordField;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import matinilad.contentlist.phantomfs.PhantomCreator;
+import matinilad.contentlist.phantomfs.PhantomFileSystem;
+import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.phantomfs.entry.FileEntry;
-import matinilad.contentlist.phantomfs.entry.FileEntryCreator;
+import matinilad.contentlist.phantomfs.entry.FileEntryFactory;
 import matinilad.contentlist.phantomfs.entry.FileEntryMetadata;
+import matinilad.contentlist.phantomfs.entry.FileEntryType;
 import matinilad.contentlist.phantomfs.entry.FileEntryWriter;
+import matinilad.contentlist.phantomfs.utils.EncryptedOutputStream;
+import matinilad.contentlist.phantomfs.utils.PathStream;
+import matinilad.contentlist.phantomfs.utils.TempFileList;
 import matinilad.contentlist.ui.UIUtils;
 
 /**
@@ -98,13 +108,6 @@ public class NewDialog extends javax.swing.JDialog {
         inputListRemoveButton = new javax.swing.JButton();
         inputFilesClearButton = new javax.swing.JButton();
         inputListItemCount = new javax.swing.JLabel();
-        jPanel2 = new javax.swing.JPanel();
-        noFilesAndDirectoriesButton = new javax.swing.JCheckBox();
-        noSha256Button = new javax.swing.JCheckBox();
-        noFileSampleButton = new javax.swing.JCheckBox();
-        noMetadataButton = new javax.swing.JCheckBox();
-        fileSampleSizeSpinner = new javax.swing.JSpinner();
-        fileSampleSizeLabel = new javax.swing.JLabel();
         jPanel5 = new javax.swing.JPanel();
         metadataNameField = new javax.swing.JTextField();
         jLabel2 = new javax.swing.JLabel();
@@ -114,6 +117,26 @@ public class NewDialog extends javax.swing.JDialog {
         jScrollPane3 = new javax.swing.JScrollPane();
         metadataDescriptionArea = new javax.swing.JTextArea();
         setUsernameToAuthorButton = new javax.swing.JButton();
+        jPanel2 = new javax.swing.JPanel();
+        noFilesAndDirectoriesButton = new javax.swing.JCheckBox();
+        noSha256Button = new javax.swing.JCheckBox();
+        noFileSampleButton = new javax.swing.JCheckBox();
+        noMetadataButton = new javax.swing.JCheckBox();
+        fileSampleSizeSpinner = new javax.swing.JSpinner();
+        fileSampleSizeLabel = new javax.swing.JLabel();
+        noFileTypeButton = new javax.swing.JCheckBox();
+        noTimestampsButton = new javax.swing.JCheckBox();
+        noFileSizeButton = new javax.swing.JCheckBox();
+        includeHiddenFilesCheckbox = new javax.swing.JCheckBox();
+        jPanel6 = new javax.swing.JPanel();
+        encryptWithAPasswordCheckbox = new javax.swing.JCheckBox();
+        passwordField = new javax.swing.JPasswordField();
+        saltLabel = new javax.swing.JLabel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        saltArea = new javax.swing.JTextArea();
+        confirmPasswordField = new javax.swing.JPasswordField();
+        confirmPasswordLabel = new javax.swing.JLabel();
+        showPasswordCheckbox = new javax.swing.JCheckBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("New");
@@ -221,7 +244,7 @@ public class NewDialog extends javax.swing.JDialog {
                 .addContainerGap()
                 .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel4Layout.createSequentialGroup()
-                        .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 275, Short.MAX_VALUE)
+                        .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 278, Short.MAX_VALUE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(inputListRemoveButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -240,7 +263,7 @@ public class NewDialog extends javax.swing.JDialog {
                         .addComponent(inputListAddButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(inputListRemoveButton)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 59, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 64, Short.MAX_VALUE)
                         .addComponent(inputFilesClearButton)))
                 .addGap(9, 9, 9)
                 .addComponent(inputListItemCount)
@@ -270,58 +293,6 @@ public class NewDialog extends javax.swing.JDialog {
 
         jTabbedPane1.addTab("Files", jPanel1);
 
-        noFilesAndDirectoriesButton.setText("Don't Write Files and Directories Count");
-
-        noSha256Button.setText("Don't Write SHA256");
-
-        noFileSampleButton.setText("Don't Write a File Sample");
-        noFileSampleButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                noFileSampleButtonActionPerformed(evt);
-            }
-        });
-
-        noMetadataButton.setText("Don't Write Metadata");
-
-        fileSampleSizeSpinner.setModel(new javax.swing.SpinnerNumberModel(32, 0, 64, 1));
-
-        fileSampleSizeLabel.setText("File Sample Size:");
-
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
-        jPanel2Layout.setHorizontalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(noFilesAndDirectoriesButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(noSha256Button, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(noFileSampleButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(noMetadataButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(fileSampleSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(fileSampleSizeLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap(155, Short.MAX_VALUE))
-        );
-        jPanel2Layout.setVerticalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addGap(12, 12, 12)
-                .addComponent(noFilesAndDirectoriesButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(noSha256Button)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(noFileSampleButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(noMetadataButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(fileSampleSizeLabel)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(fileSampleSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(122, Short.MAX_VALUE))
-        );
-
-        jTabbedPane1.addTab("Settings", jPanel2);
-
         jLabel2.setText("Name:");
 
         jLabel3.setText("Author:");
@@ -346,7 +317,7 @@ public class NewDialog extends javax.swing.JDialog {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel5Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 376, Short.MAX_VALUE)
+                    .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 379, Short.MAX_VALUE)
                     .addComponent(metadataNameField, javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel5Layout.createSequentialGroup()
                         .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
@@ -376,11 +347,161 @@ public class NewDialog extends javax.swing.JDialog {
                 .addGap(11, 11, 11)
                 .addComponent(jLabel4)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 136, Short.MAX_VALUE)
+                .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 141, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
         jTabbedPane1.addTab("Info", jPanel5);
+
+        noFilesAndDirectoriesButton.setText("Don't write files and directories count");
+
+        noSha256Button.setText("Don't write file SHA256");
+
+        noFileSampleButton.setText("Don't write file sample");
+        noFileSampleButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                noFileSampleButtonActionPerformed(evt);
+            }
+        });
+
+        noMetadataButton.setText("Don't write metadata");
+
+        fileSampleSizeSpinner.setModel(new javax.swing.SpinnerNumberModel(32, 0, 64, 1));
+
+        fileSampleSizeLabel.setText("File sample size (in bytes):");
+
+        noFileTypeButton.setText("Don't write file type");
+
+        noTimestampsButton.setText("Don't write timestamps");
+
+        noFileSizeButton.setText("Don't write file size");
+
+        includeHiddenFilesCheckbox.setText("Include hidden files");
+
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel2Layout.createSequentialGroup()
+                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(noSha256Button, javax.swing.GroupLayout.PREFERRED_SIZE, 146, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(noTimestampsButton)
+                            .addComponent(noMetadataButton))
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(jPanel2Layout.createSequentialGroup()
+                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(noFileTypeButton)
+                            .addComponent(noFileSampleButton, javax.swing.GroupLayout.PREFERRED_SIZE, 192, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(noFileSizeButton)
+                            .addComponent(noFilesAndDirectoriesButton)
+                            .addComponent(fileSampleSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(fileSampleSizeLabel)
+                            .addComponent(includeHiddenFilesCheckbox))
+                        .addGap(0, 165, Short.MAX_VALUE))))
+        );
+        jPanel2Layout.setVerticalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(noFileTypeButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(noTimestampsButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(noFileSizeButton)
+                .addGap(6, 6, 6)
+                .addComponent(noFilesAndDirectoriesButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(noSha256Button)
+                .addGap(6, 6, 6)
+                .addComponent(noFileSampleButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(noMetadataButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(fileSampleSizeLabel)
+                .addGap(6, 6, 6)
+                .addComponent(fileSampleSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(includeHiddenFilesCheckbox)
+                .addContainerGap(29, Short.MAX_VALUE))
+        );
+
+        jTabbedPane1.addTab("Settings", jPanel2);
+
+        encryptWithAPasswordCheckbox.setText("Encrypt with a password:");
+        encryptWithAPasswordCheckbox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                encryptWithAPasswordCheckboxActionPerformed(evt);
+            }
+        });
+
+        passwordField.setEnabled(false);
+
+        saltLabel.setText("Salt (type random characters below or leave empty to skip):");
+        saltLabel.setEnabled(false);
+
+        saltArea.setColumns(20);
+        saltArea.setRows(5);
+        saltArea.setEnabled(false);
+        jScrollPane1.setViewportView(saltArea);
+
+        confirmPasswordField.setEnabled(false);
+
+        confirmPasswordLabel.setText("Confirm password:");
+        confirmPasswordLabel.setEnabled(false);
+
+        showPasswordCheckbox.setText("Show");
+        showPasswordCheckbox.setEnabled(false);
+        showPasswordCheckbox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                showPasswordCheckboxActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel6Layout = new javax.swing.GroupLayout(jPanel6);
+        jPanel6.setLayout(jPanel6Layout);
+        jPanel6Layout.setHorizontalGroup(
+            jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel6Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(confirmPasswordField)
+                    .addComponent(jScrollPane1)
+                    .addGroup(jPanel6Layout.createSequentialGroup()
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(encryptWithAPasswordCheckbox)
+                            .addComponent(saltLabel)
+                            .addComponent(confirmPasswordLabel))
+                        .addGap(0, 67, Short.MAX_VALUE))
+                    .addGroup(jPanel6Layout.createSequentialGroup()
+                        .addComponent(passwordField)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(showPasswordCheckbox)))
+                .addContainerGap())
+        );
+        jPanel6Layout.setVerticalGroup(
+            jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel6Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(encryptWithAPasswordCheckbox)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(passwordField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(showPasswordCheckbox))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(confirmPasswordLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(confirmPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(saltLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 149, Short.MAX_VALUE)
+                .addContainerGap())
+        );
+
+        jTabbedPane1.addTab("Encrypt", jPanel6);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -453,7 +574,11 @@ public class NewDialog extends javax.swing.JDialog {
         JFileChooser chooser = new JFileChooser();
         chooser.setMultiSelectionEnabled(false);
         chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-        chooser.setFileFilter(new FileNameExtensionFilter("CSV Files (*.csv)", "csv"));
+        if (this.encryptWithAPasswordCheckbox.isSelected()) {
+            chooser.setFileFilter(new FileNameExtensionFilter("BIN Files (*.bin)", "bin"));
+        } else {
+            chooser.setFileFilter(new FileNameExtensionFilter("CSV Files (*.csv)", "csv"));
+        }
         chooser.setDialogType(JFileChooser.SAVE_DIALOG);
         if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
@@ -461,7 +586,11 @@ public class NewDialog extends javax.swing.JDialog {
 
         File file = chooser.getSelectedFile();
         if (!file.getName().contains(".")) {
-            file = new File(file.getParentFile(), file.getName() + ".csv");
+            if (this.encryptWithAPasswordCheckbox.isSelected()) {
+                file = new File(file.getParentFile(), file.getName() + ".bin");
+            } else {
+                file = new File(file.getParentFile(), file.getName() + ".csv");
+            }
         }
 
         this.outputFile.setText(file.toString());
@@ -517,9 +646,11 @@ public class NewDialog extends javax.swing.JDialog {
             File outputFile,
             List<File> inputFiles,
             FileEntryWriter.Flags flags, int sampleSize,
-            String name, String author, String description
+            String name, String author, String description,
+            byte[] userSalt, char[] password,
+            boolean includeHiddenFiles
     ) throws IOException, InterruptedException {
-        LOGGER.log(Level.INFO, "creating list on {0} for {1}",
+        LOGGER.log(Level.INFO, "Creating list on {0} for {1}",
                 new Object[]{
                     outputFile.toString(),
                     inputFiles.stream().map(File::toString).collect(Collectors.joining(File.pathSeparator))
@@ -528,73 +659,112 @@ public class NewDialog extends javax.swing.JDialog {
         fileStatus.reset();
         fileStatus.updateDialog(true);
 
-        try (FileEntryWriter writer = new FileEntryWriter(new OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(outputFile)), StandardCharsets.UTF_8), flags)) {
-            PhantomCreator creator = new PhantomCreator() {
-                @Override
-                protected void onShouldFileBeRejected(Path file) throws IOException, InterruptedException {
-                    if (file.toFile().equals(outputFile)) {
-                        throw new IOException("output file must not be used as input file!");
-                    }
-                }
-
-                @Override
-                protected void onFileRejected(Path file, IOException reason) throws IOException, InterruptedException {
-                    LOGGER.log(Level.WARNING, "error on " + file.toString(), reason);
-                }
-
-                @Override
-                protected void onEntry(FileEntry entry) throws IOException, InterruptedException {
-                    writer.writeFileEntry(entry);
-                    LOGGER.log(Level.INFO, "written {0}", entry.getPath().toString());
-
-                    progressBar.updateCurrentGlobalStatusAsync(
-                            getNumberOfEntries() + " Entries with " + UIUtils.formatBytesShort(getTotalSize()) + " in total",
-                            false
-                    );
-                }
-            };
-            FileEntryCreator fileEntryCreator = new FileEntryCreator() {
-                @Override
-                protected void onEntryCreated(FileEntry entry) throws IOException, InterruptedException {
-                    LOGGER.log(Level.INFO, "created {0}", entry.getPath().toString());
-
-                    fileStatus.reset();
-                    fileStatus.setFileName(entry.getPath().toString());
-                    fileStatus.updateDialog(entry.getPath().isRoot());
-
-                    if (entry.getPath().isRoot()) {
-                        FileEntryMetadata metadata = entry.getMetadata();
-                        metadata.writeString(FileEntry.METADATA_NAME, name);
-                        metadata.writeString(FileEntry.METADATA_AUTHOR, author);
-                        metadata.writeString(FileEntry.METADATA_DESCRIPTION, description);
-                    }
-                }
-
-                @Override
-                protected void onEntryProgress(FileEntry entry, long bytes) throws IOException, InterruptedException {
-                    if (entry.getSize() != 0) {
-                        if (fileStatus.getFileSize() == 0) {
-                            fileStatus.setFileSize(entry.getSize());
-                        }
-                        fileStatus.setFileProgress(bytes);
-                        fileStatus.updateDialog(false);
-                    }
-                }
-            };
-            fileEntryCreator.setSha256Enabled(flags.isSha256Enabled());
-            if (flags.isSampleEnabled()) {
-                fileEntryCreator.setSampleSize(sampleSize);
-            } else {
-                fileEntryCreator.setSampleSize(0);
+        TempFileList tempFile = new TempFileList();
+        try {
+            OutputStream out = tempFile.newOutputStream(outputFile.toPath());
+            if (password != null) {
+                out = new GZIPOutputStream(new EncryptedOutputStream(out, userSalt, password));
             }
+            
+            try (FileEntryWriter w = new FileEntryWriter(new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8)), flags)) {
+                PhantomFileSystem fs = new PhantomFileSystem();
 
-            creator.setFileEntryCreator(fileEntryCreator);
-            creator.create(inputFiles.stream().map(File::toPath).toArray(Path[]::new));
+                FileEntryFactory factory = new FileEntryFactory() {
+                    @Override
+                    protected void onFileProgress(Path path, long currentCount, long totalBytes) {
+                        if (totalBytes != 0) {
+                            if (fileStatus.getFileSize() == 0) {
+                                fileStatus.setFileSize(totalBytes);
+                            }
+                            fileStatus.setFileProgress(currentCount);
+                            fileStatus.updateDialog(false);
+                        }
+                    }
+                };
+                factory.setSampleSize(sampleSize);
+                factory.setSha256Enabled(flags.isSha256Enabled());
 
-            progressBar.updateCurrentGlobalStatusAsync(
-                    creator.getNumberOfEntries() + " Entries with " + UIUtils.formatBytesShort(creator.getTotalSize()) + " in total",
-                    true
-            );
+                AtomicInteger entries = new AtomicInteger(0);
+                AtomicLong totalSize = new AtomicLong(0);
+
+                Path[] input = new Path[inputFiles.size()];
+                for (int i = 0; i < input.length; i++) {
+                    input[i] = inputFiles.get(i).toPath();
+                }
+                PathStream stream = new PathStream(input, includeHiddenFiles);
+                try {
+                    stream.stream((e) -> {
+                        Path file = e.getPath();
+                        try {
+                            if (e.getError() != null) {
+                                throw e.getError();
+                            }
+
+                            LOGGER.log(Level.INFO, "Reading {0}", file.toString());
+
+                            fileStatus.reset();
+                            fileStatus.setFileName(file.toString());
+                            fileStatus.updateDialog(false);
+
+                            FileEntry entry = factory.newFileEntry(e.getRoot(), file);
+                            fs.writeEntry(entry);
+
+                            if (entry.getType().equals(FileEntryType.FILE)) {
+                                totalSize.addAndGet(entry.getSize());
+                            }
+
+                            progressBar.updateCurrentGlobalStatusAsync(
+                                    entries.incrementAndGet() + " Entries with " + UIUtils.formatBytesShort(totalSize.get()) + " in total",
+                                    false
+                            );
+                        } catch (Throwable t) {
+                            if (t instanceof InterruptedException ex) {
+                                throw new RuntimeException(ex);
+                            } else {
+                                LOGGER.log(Level.WARNING, "Error on " + file.toString(), e.getError());
+                            }
+                        }
+                    });
+                } catch (RuntimeException ex) {
+                    if (ex.getCause() instanceof InterruptedException in) {
+                        throw in;
+                    }
+                    throw ex;
+                }
+
+                fs.validate();
+
+                FileEntry rootEntry = fs.getEntry(PhantomPath.of("/"));
+                FileEntryMetadata meta = rootEntry.getMetadata();
+                if (name != null) {
+                    meta.writeString(FileEntry.METADATA_NAME, name);
+                }
+                if (author != null) {
+                    meta.writeString(FileEntry.METADATA_AUTHOR, author);
+                }
+                if (description != null) {
+                    meta.writeString(FileEntry.METADATA_DESCRIPTION, description);
+                }
+
+                if (Thread.interrupted()) {
+                    throw new InterruptedException();
+                }
+                for (FileEntry e : fs.listEntries()) {
+                    if (Thread.interrupted()) {
+                        throw new InterruptedException();
+                    }
+                    w.writeFileEntry(e);
+                }
+
+                progressBar.updateCurrentGlobalStatusAsync(
+                        entries.get() + " Entries with " + UIUtils.formatBytesShort(totalSize.get()) + " in total",
+                        true
+                );
+            }
+            
+        } catch (Throwable t) {
+            tempFile.deleteFiles();
+            throw t;
         }
     }
 
@@ -615,17 +785,18 @@ public class NewDialog extends javax.swing.JDialog {
                 return;
             }
         }
-        List<File> inputFiles = new ArrayList<>();
-        for (int i = 0; i < this.inputList.getModel().getSize(); i++) {
-            inputFiles.add(this.inputList.getModel().getElementAt(i));
-        }
-
-        StatusDialog dialog = new StatusDialog(this, true);
-        dialog.setTitle(output.toString());
-        LOGGER.addHandler(dialog.getLoggerHandler());
 
         FileEntryWriter.Flags flags = new FileEntryWriter.Flags();
 
+        if (this.noFileTypeButton.isSelected()) {
+            flags.setTypeEnabled(false);
+        }
+        if (this.noTimestampsButton.isSelected()) {
+            flags.setTimestampsEnabled(false);
+        }
+        if (this.noFileSizeButton.isSelected()) {
+            flags.setSizeEnabled(false);
+        }
         if (this.noFilesAndDirectoriesButton.isSelected()) {
             flags.setFilesAndDirectoriesEnabled(false);
         }
@@ -638,24 +809,69 @@ public class NewDialog extends javax.swing.JDialog {
         if (this.noMetadataButton.isSelected()) {
             flags.setMetadataEnabled(false);
         }
-        
-        int sampleSize = (int) this.fileSampleSizeSpinner.getValue();
 
+        int sampleSize = (int) this.fileSampleSizeSpinner.getValue();
+        if (sampleSize == 0) {
+            flags.setSampleEnabled(false);
+        } else if (!flags.isSampleEnabled()) {
+            sampleSize = 0;
+        }
+
+        List<File> inputFiles = new ArrayList<>();
+        for (int i = 0; i < this.inputList.getModel().getSize(); i++) {
+            inputFiles.add(this.inputList.getModel().getElementAt(i));
+        }
+
+        int finalSampleSize = sampleSize;
         String name = this.metadataNameField.getText();
         String author = this.metadataAuthorField.getText();
         String description = this.metadataDescriptionArea.getText();
 
+        byte[] userSalt = null;
+        char[] password = null;
+
+        if (this.encryptWithAPasswordCheckbox.isSelected()) {
+            password = this.passwordField.getPassword();
+            if (password.length == 0) {
+                Toolkit.getDefaultToolkit().beep();
+                JOptionPane.showMessageDialog(this, "Password is empty", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (!this.showPasswordCheckbox.isSelected()) {
+                char[] confirmPassword = this.confirmPasswordField.getPassword();
+                if (!Arrays.equals(password, confirmPassword)) {
+                    Toolkit.getDefaultToolkit().beep();
+                    JOptionPane.showMessageDialog(this, "Passwords are not equal", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            }
+            if (!this.saltArea.getText().isEmpty()) {
+                userSalt = this.saltArea.getText().getBytes(StandardCharsets.UTF_8);
+            }
+            this.passwordField.setText("");
+            this.confirmPasswordField.setText("");
+        }
+
+        final boolean includeHiddenFiles = this.includeHiddenFilesCheckbox.isSelected();
+        final byte[] finalUserSalt = userSalt;
+        final char[] finalPassword = password;
+
+        StatusDialog dialog = new StatusDialog(this, true);
+        dialog.setTitle(output.toString());
+        LOGGER.addHandler(dialog.getLoggerHandler());
+
         AtomicBoolean canceled = new AtomicBoolean(false);
         Thread th = new Thread(() -> {
             try {
-                create(dialog, output, inputFiles, flags, sampleSize, name, author, description);
+                create(dialog, output, inputFiles, flags, finalSampleSize, name, author, description, finalUserSalt, finalPassword, includeHiddenFiles);
             } catch (InterruptedException e) {
                 LOGGER.log(Level.INFO, "Interrupted by user", e);
-                if (!output.delete()) {
-                    LOGGER.log(Level.SEVERE, "Could not delete {0}", output);
-                }
             } catch (Throwable t) {
                 LOGGER.log(Level.SEVERE, null, t);
+            } finally {
+                if (finalPassword != null) {
+                    Arrays.fill(finalPassword, '\0');
+                }
             }
             SwingUtilities.invokeLater(() -> {
                 LOGGER.info("Finished!");
@@ -668,14 +884,16 @@ public class NewDialog extends javax.swing.JDialog {
             });
         });
         dialog.getCancelButton().addActionListener((e) -> {
-            th.interrupt();
-            dialog.setVisible(false);
-            dialog.dispose();
-            canceled.set(true);
+            if (dialog.showCancelDialog()) {
+                th.interrupt();
+                dialog.setVisible(false);
+                dialog.dispose();
+                canceled.set(true);
+            }
         });
         dialog.addWindowListener(new WindowAdapter() {
             @Override
-            public void windowClosing(WindowEvent e) {
+            public void windowClosed(WindowEvent e) {
                 if (!canceled.get()) {
                     NewDialog.this.setVisible(false);
                     NewDialog.this.dispose();
@@ -698,10 +916,61 @@ public class NewDialog extends javax.swing.JDialog {
         this.fileSampleSizeSpinner.setEnabled(!value);
     }//GEN-LAST:event_noFileSampleButtonActionPerformed
 
+    private String mirror(String s) {
+        StringBuilder b = new StringBuilder();
+        for (int i = s.length() - 1; i >= 0; i--) {
+            b.append(s.charAt(i));
+        }
+        return b.toString();
+    }
+
+    private void encryptWithAPasswordCheckboxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_encryptWithAPasswordCheckboxActionPerformed
+        boolean b = this.encryptWithAPasswordCheckbox.isSelected();
+        this.passwordField.setText("");
+        this.confirmPasswordField.setText("");
+        this.showPasswordCheckbox.setSelected(false);
+        this.passwordField.setEnabled(b);
+        this.showPasswordCheckbox.setEnabled(b);
+        this.confirmPasswordLabel.setEnabled(b);
+        this.confirmPasswordField.setEnabled(b);
+        this.saltLabel.setEnabled(b);
+        this.saltArea.setEnabled(b);
+
+        if (!this.outputFile.getText().isEmpty()) {
+            String[] split = mirror(this.outputFile.getText()).split("\\.", 2);
+            if (split.length == 2) {
+                String ext = mirror(split[0]).toLowerCase();
+                String name = mirror(split[1]);
+                if (ext.equals("bin") || ext.equals("csv")) {
+                    if (b) {
+                        this.outputFile.setText(name + ".bin");
+                    } else {
+                        this.outputFile.setText(name + ".csv");
+                    }
+                }
+            }
+        }
+    }//GEN-LAST:event_encryptWithAPasswordCheckboxActionPerformed
+
+    private void showPasswordCheckboxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showPasswordCheckboxActionPerformed
+        boolean b = this.showPasswordCheckbox.isSelected();
+        if (b) {
+            this.passwordField.setEchoChar('\0');
+        } else {
+            this.passwordField.setEchoChar(new JPasswordField().getEchoChar());
+        }
+        this.confirmPasswordField.setEnabled(!b);
+        this.confirmPasswordLabel.setEnabled(!b);
+    }//GEN-LAST:event_showPasswordCheckboxActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPasswordField confirmPasswordField;
+    private javax.swing.JLabel confirmPasswordLabel;
     private javax.swing.JButton createButton;
+    private javax.swing.JCheckBox encryptWithAPasswordCheckbox;
     private javax.swing.JLabel fileSampleSizeLabel;
     private javax.swing.JSpinner fileSampleSizeSpinner;
+    private javax.swing.JCheckBox includeHiddenFilesCheckbox;
     private javax.swing.JButton inputFilesClearButton;
     private javax.swing.JList<File> inputList;
     private javax.swing.JButton inputListAddButton;
@@ -715,6 +984,8 @@ public class NewDialog extends javax.swing.JDialog {
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel5;
+    private javax.swing.JPanel jPanel6;
+    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JTabbedPane jTabbedPane1;
@@ -722,11 +993,18 @@ public class NewDialog extends javax.swing.JDialog {
     private javax.swing.JTextArea metadataDescriptionArea;
     private javax.swing.JTextField metadataNameField;
     private javax.swing.JCheckBox noFileSampleButton;
+    private javax.swing.JCheckBox noFileSizeButton;
+    private javax.swing.JCheckBox noFileTypeButton;
     private javax.swing.JCheckBox noFilesAndDirectoriesButton;
     private javax.swing.JCheckBox noMetadataButton;
     private javax.swing.JCheckBox noSha256Button;
+    private javax.swing.JCheckBox noTimestampsButton;
     private javax.swing.JTextField outputFile;
     private javax.swing.JButton outputFileSelectButton;
+    private javax.swing.JPasswordField passwordField;
+    private javax.swing.JTextArea saltArea;
+    private javax.swing.JLabel saltLabel;
     private javax.swing.JButton setUsernameToAuthorButton;
+    private javax.swing.JCheckBox showPasswordCheckbox;
     // End of variables declaration//GEN-END:variables
 }

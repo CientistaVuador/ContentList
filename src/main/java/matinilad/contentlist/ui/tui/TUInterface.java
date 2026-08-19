@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.io.PushbackInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -20,7 +21,7 @@ import matinilad.contentlist.phantomfs.entry.FileEntry;
 import matinilad.contentlist.phantomfs.PhantomFileSystem;
 import matinilad.contentlist.phantomfs.PhantomPath;
 import matinilad.contentlist.phantomfs.entry.FileEntryReader;
-import matinilad.contentlist.phantomfs.utils.PasswordEncryption;
+import matinilad.contentlist.phantomfs.utils.EncryptedInputStream;
 import matinilad.contentlist.ui.UIUtils;
 import matinilad.contentlist.ui.tui.commands.AboutCommand;
 import matinilad.contentlist.ui.tui.commands.ChangeDirectoryCommand;
@@ -96,44 +97,60 @@ public class TUInterface {
             out.println("Input file is not a file!");
             return;
         }
-        
+
         Scanner scanner = new Scanner(in);
         if (!decrypt && inputPath.getFileName().toString().toLowerCase().endsWith(".bin")) {
-            out.println("Is "+inputPath.toString()+" encrypted?");
+            out.println("Is " + inputPath.toString() + " encrypted?");
             out.print("[Y/N:]");
             String r = scanner.nextLine();
             if (r.equalsIgnoreCase("y") || r.equalsIgnoreCase("yes")) {
                 decrypt = true;
             }
         }
-        
+
         out.println("Loading...");
 
         PhantomFileSystem fs = new PhantomFileSystem();
         try {
-            InputStream input;
+            InputStream input = Files.newInputStream(inputPath);
             if (decrypt) {
                 Console console = System.console();
                 if (console == null) {
                     out.println("Console is not available for password reading");
                     return;
                 }
-                byte[] data = Files.readAllBytes(inputPath);
+
+                PushbackInputStream pushback = new PushbackInputStream(input, 512);
+                byte[] sample = pushback.readNBytes(512);
+                pushback.unread(sample);
+                input = pushback;
+
                 while (true) {
                     char[] password = console.readPassword("[%s]", "Password:");
-                    if (password == null || password.length == 0) {
-                        out.println("Password is empty, try again");
-                        continue;
-                    }
                     try {
-                        input = new GZIPInputStream(new ByteArrayInputStream(PasswordEncryption.decrypt(data, password)));
+                        if (password == null || password.length == 0) {
+                            out.println("Password is empty");
+                            continue;
+                        }
+
+                        try {
+                            EncryptedInputStream test = new EncryptedInputStream(new ByteArrayInputStream(sample), password);
+                            test.readAllBytes();
+                        } catch (EncryptedInputStream.IncorrectPasswordException ex) {
+                            out.println("Incorrect password or corrupted file, try again");
+                            continue;
+                        } catch (IOException t) {
+                            //ignore
+                        }
+
+                        input = new GZIPInputStream(new EncryptedInputStream(input, password));
                         break;
-                    } catch (PasswordEncryption.IncorrectPasswordException ex) {
-                        out.println("Incorrect password or corrupted file, try again");
+                    } finally {
+                        if (password != null) {
+                            Arrays.fill(password, '\0');
+                        }
                     }
                 }
-            } else {
-                input = Files.newInputStream(inputPath);
             }
             
             try (FileEntryReader reader = new FileEntryReader(new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8)))) {
@@ -150,7 +167,7 @@ public class TUInterface {
         }
 
         out.println("Done!");
-        
+
         runTerminal(scanner, in, out, fs);
     }
 
@@ -176,7 +193,7 @@ public class TUInterface {
         TUIState state = new TUIState();
         state.setFileSystem(fs);
         state.setDirectOutput(out);
-        
+
         Commands commands = new Commands();
 
         commands.addCommand(new HelpCommand());

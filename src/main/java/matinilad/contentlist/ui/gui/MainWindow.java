@@ -130,6 +130,7 @@ public class MainWindow extends javax.swing.JFrame {
     private void setupDialogs() {
         this.log = new StatusDialog(this, true);
         this.log.removeStatusPanel();
+        this.log.getCancelButton().setEnabled(false);
         this.log.setTitle("Log");
         this.about = new About(this, true, UIUtils.name()+" "+UIUtils.version()+"\n\n"+UIUtils.about());
 
@@ -173,6 +174,7 @@ public class MainWindow extends javax.swing.JFrame {
         createButton = new javax.swing.JMenuItem();
         jSeparator4 = new javax.swing.JPopupMenu.Separator();
         openButton = new javax.swing.JMenuItem();
+        openEncryptedButton = new javax.swing.JMenuItem();
         jMenu2 = new javax.swing.JMenu();
         rootDirectoryButton = new javax.swing.JMenuItem();
         themeMenu = new javax.swing.JMenu();
@@ -286,7 +288,7 @@ public class MainWindow extends javax.swing.JFrame {
         this.jScrollPane1.setTransferHandler(new FileDragAndDrop() {
             @Override
             protected boolean process(List<File> files) {
-                openFileSystemCSV(files.get(0));
+                openFileSystemCSV(files.get(0), false);
                 return true;
             }
         });
@@ -416,6 +418,16 @@ public class MainWindow extends javax.swing.JFrame {
             }
         });
         jMenu1.add(openButton);
+
+        openEncryptedButton.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, java.awt.event.InputEvent.ALT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        openEncryptedButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/matinilad/contentlist/ui/gui/open.png"))); // NOI18N
+        openEncryptedButton.setText("Decrypt and Open");
+        openEncryptedButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                openEncryptedButtonActionPerformed(evt);
+            }
+        });
+        jMenu1.add(openEncryptedButton);
 
         jMenuBar1.add(jMenu1);
 
@@ -593,7 +605,7 @@ public class MainWindow extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     public void openFile(String file) {
-        openFileSystemCSV(new File(file));
+        openFileSystemCSV(new File(file), false);
     }
     
     private void updateFileTable() {
@@ -662,20 +674,20 @@ public class MainWindow extends javax.swing.JFrame {
         updateFileTable();
     }
 
-    private void openFileSystemCSV(File file) {
+    private void openFileSystemCSV(File file, boolean decrypt) {
         file = file.getAbsoluteFile();
         this.rootDirectorySuggestion = file.getParentFile();
 
         LOGGER.log(Level.INFO, "Input file: {0}", file.toString());
         LOGGER.log(Level.INFO, "Root directory suggestion: {0}", this.rootDirectorySuggestion);
-
+        
         OpenDialog o = new OpenDialog(this, true) {
             @Override
             protected void onFileSystemReady(PhantomFileSystem fs) {
                 openFileSystem(fs);
             }
         };
-        o.open(file);
+        o.open(file, decrypt);
         o.setVisible(true);
     }
 
@@ -683,13 +695,14 @@ public class MainWindow extends javax.swing.JFrame {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogType(JFileChooser.OPEN_DIALOG);
         chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-        FileFilter csvFile = new FileNameExtensionFilter("CSV File (.csv)", "csv");
+        FileFilter csvFile = new FileNameExtensionFilter("CSV Files (.csv)", "csv");
+        chooser.addChoosableFileFilter(csvFile);
         chooser.setFileFilter(csvFile);
         chooser.setMultiSelectionEnabled(false);
         int result = chooser.showOpenDialog(this);
         if (result == JFileChooser.APPROVE_OPTION) {
             File selected = chooser.getSelectedFile();
-            openFileSystemCSV(selected);
+            openFileSystemCSV(selected, false);
         }
     }//GEN-LAST:event_openButtonActionPerformed
 
@@ -1466,6 +1479,21 @@ public class MainWindow extends javax.swing.JFrame {
         updateCurrentPath(nextPath, false);
     }//GEN-LAST:event_forwardButtonActionPerformed
 
+    private void openEncryptedButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openEncryptedButtonActionPerformed
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogType(JFileChooser.OPEN_DIALOG);
+        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        FileFilter binFile = new FileNameExtensionFilter("BIN Files (.bin)", "bin");
+        chooser.addChoosableFileFilter(binFile);
+        chooser.setFileFilter(binFile);
+        chooser.setMultiSelectionEnabled(false);
+        int result = chooser.showOpenDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selected = chooser.getSelectedFile();
+            openFileSystemCSV(selected, true);
+        }
+    }//GEN-LAST:event_openEncryptedButtonActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem aboutButton;
     private javax.swing.JButton backButton;
@@ -1498,6 +1526,7 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JMenuItem moveToTrashButton;
     private javax.swing.JMenuItem openButton;
     private javax.swing.JMenuItem openDirectoryButton;
+    private javax.swing.JMenuItem openEncryptedButton;
     private javax.swing.JMenuItem openFileButton;
     private javax.swing.JMenuItem openLocationButton;
     private javax.swing.JTextField pathField;
